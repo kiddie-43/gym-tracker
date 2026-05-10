@@ -1,0 +1,82 @@
+@GymTracker.Api_HostAddress = http://localhost:5092
+
+GET {{GymTracker.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
+
+# Get workout by ID
+GET {{GymTracker.Api_HostAddress}}/api/workouts/{workoutId}
+Accept: application/json
+
+###
+
+# Get all workouts for user
+GET {{GymTracker.Api_HostAddress}}/api/workouts
+Accept: application/json
+
+###
+
+# Create a new workout
+POST {{GymTracker.Api_HostAddress}}/api/workouts
+Content-Type: application/json
+
+{
+  "performedAt": "2026-05-06T10:00:00Z",
+  "status": "completed",
+  "routineId": null,
+  "notes": "Good workout",
+  "exerciseEntries": [
+    {
+      "externalExerciseId": "exercise-id",
+      "exerciseName": "Biceps Curls With Dumbbell",
+      "muscleGroupIds": ["muscle-id"],
+      "imageUrl": null,
+      "notes": null,
+      "sets": [
+        {
+          "repetitions": 8,
+          "weight": 100,
+          "restSeconds": 120,
+          "completed": true
+        }
+      ]
+    }
+  ]
+}
+
+###
+
+# Update an existing workout
+PUT {{GymTracker.Api_HostAddress}}/api/workouts/{workoutId}
+Content-Type: application/json
+
+{
+  "performedAt": "2026-05-06T10:00:00Z",
+  "status": "completed",
+  "routineId": null,
+  "notes": "Updated workout",
+  "exerciseEntries": [
+    {
+      "externalExerciseId": "exercise-id",
+      "exerciseName": "Biceps Curls With Dumbbell",
+      "muscleGroupIds": ["muscle-id"],
+      "imageUrl": null,
+      "notes": null,
+      "sets": [
+        {
+          "repetitions": 10,
+          "weight": 110,
+          "restSeconds": 120,
+          "completed": true
+        }
+      ]
+    }
+  ]
+}
+
+###
+
+# Delete a workout
+DELETE {{GymTracker.Api_HostAddress}}/api/workouts/{workoutId}
+Accept: application/json

@@ -1,0 +1,13 @@
+{
+  "name": "gym-tracker",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently -k -n BACK,FRONT -c yellow,cyan \"npm run dev:back\" \"npm run dev:front\"",
+    "dev:back": "dotnet watch --project backend/src/GymTracker.Api/GymTracker.Api.csproj run",
+    "dev:front": "npm --prefix frontend run dev",
+    "install:all": "npm install --prefix frontend"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  }
+}
