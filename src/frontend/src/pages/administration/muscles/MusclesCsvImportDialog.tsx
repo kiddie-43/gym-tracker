@@ -12,13 +12,13 @@ import TableRow from '@mui/material/TableRow';
 import Typography from '@mui/material/Typography';
 import { useTranslation } from 'react-i18next';
 
-import type { ImportMusclesResult } from '../../../interfaces/admin/muscles/muscles';
+import type { IImportMusclesResult } from '../../../interfaces/muscles/IMuscles';
 import { PopupDialog } from '../../../components/PopupDialog/PopupDialog';
 
 export interface MusclesCsvImportDialogProps {
   open: boolean;
   loading: boolean;
-  result: ImportMusclesResult | null;
+  result: IImportMusclesResult | null;
   error: string | null;
   onClose: () => void;
   onImport: (rows: Array<{ name?: string; code?: string; description?: string }>) => Promise<void>;

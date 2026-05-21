@@ -51,14 +51,14 @@ public sealed class MuscleService
     }
 
     public async Task<IReadOnlyCollection<MuscleResponse>> ListAsync(
-        bool includeInactive,
+        bool includeDeleted,
         string? search = null,
         string? filterCode = null,
         string? filterName = null,
         CancellationToken cancellationToken = default)
     {
         var entities = await _repository.ListAsync(includeDeleted: true, cancellationToken);
-        var filtered = AdminSoftDeleteFilter.Apply(entities, item => item.IsDeleted, item => item.Active, includeInactive)
+        var filtered = AdminSoftDeleteFilter.Apply(entities, item => item.IsDeleted, item => item.Active, includeDeleted)
             .ToList(); // Materialize immediately
 
         // Apply text filters
@@ -93,7 +93,7 @@ public sealed class MuscleService
     }
 
     public async Task<MusclesPageResponse> ListPageAsync(
-        bool includeInactive,
+        bool includeDeleted,
         string? search = null,
         string? filterCode = null,
         string? filterName = null,
@@ -108,7 +108,7 @@ public sealed class MuscleService
         var normalizedPage = page < 1 ? 1 : page;
         var normalizedPageSize = pageSize < 1 ? 10 : Math.Min(pageSize, 100);
 
-        var rows = await ListAsync(includeInactive, search, filterCode, filterName, cancellationToken);
+        var rows = await ListAsync(includeDeleted, search, filterCode, filterName, cancellationToken);
         var comparer = StringComparer.OrdinalIgnoreCase;
         IOrderedEnumerable<MuscleResponse> ordered = normalizedSortBy switch
         {

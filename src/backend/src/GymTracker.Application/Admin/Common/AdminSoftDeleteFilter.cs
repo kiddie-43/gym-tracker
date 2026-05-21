@@ -6,6 +6,7 @@ public static class AdminSoftDeleteFilter
         IEnumerable<T> source,
         Func<T, bool> isDeleted,
         Func<T, bool> isActive,
+        bool includeDeleted = false,
         bool includeInactive = false)
     {
         ArgumentNullException.ThrowIfNull(source);
@@ -13,8 +14,8 @@ public static class AdminSoftDeleteFilter
         ArgumentNullException.ThrowIfNull(isActive);
 
         return source
-            .Where(item => !isDeleted(item))
-            .Where(item => includeInactive || isActive(item))
+            .Where(item => includeDeleted || !isDeleted(item))
+            .Where(item => includeDeleted || includeInactive || isActive(item))
             .ToArray();
     }
 }
