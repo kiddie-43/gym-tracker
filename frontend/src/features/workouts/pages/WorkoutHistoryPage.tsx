@@ -18,7 +18,7 @@ import { PageHeader } from '../../../shared/components/PageHeader';
 import type { WorkoutSummary, CreateWorkoutRequest } from '../../../shared/types/workouts';
 import { HistoryFilters } from '../../progress/components/HistoryFilters';
 import { WorkoutEntryForm } from '../components/WorkoutEntryForm';
-import { WorkoutCard } from '../components/WorkoutCard';
+import { WorkoutCard } from '../../../pages/WorkoutHistory/workouts/components/WorkoutCard';
 import {
   closeCreateDialog,
   closeDeleteDialog,
@@ -33,7 +33,7 @@ import {
   startEditWorkout,
   submitCreateWorkout,
   submitUpdateWorkout,
-} from '../state/workoutsSlice';
+} from '../../../redux/stados/workoutsState';
 
 export function WorkoutHistoryPage() {
   const dispatch = useAppDispatch();

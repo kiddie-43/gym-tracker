@@ -13,6 +13,7 @@ import { PreferencesPage } from '../pages/Preferences/PreferencesPage';
 import { ProfilePage } from '../pages/Profile/ProfilePage';
 import { WorkoutHistoryPage } from '../pages/WorkoutHistory/WorkoutHistoryPage';
 import { MealHistoryPage } from '../pages/MealHistory/MealHistoryPage';
+import { AdministrationPage } from '../pages/Administration/AdministrationPage';
 
 async function loadCatalog() {
   const [muscleGroups, exercises] = await Promise.all([
@@ -74,5 +75,9 @@ export const router = createBrowserRouter([
         element: <MealHistoryPage />,
       },
     ],
+  },
+  {
+    path: '/admin',
+    element: <AdministrationPage />,
   },
 ]);

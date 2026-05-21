@@ -1,0 +1,33 @@
+{
+  "run_id": "55483f97",
+  "workflow_id": "speckit",
+  "status": "failed",
+  "current_step_index": 0,
+  "current_step_id": "specify",
+  "step_results": {
+    "specify": {
+      "integration": "copilot",
+      "model": null,
+      "options": {},
+      "input": {
+        "args": "Construir modulo de administracion completo para Gym Tracker con frontend y backend para gestionar zonas musculares, musculos, tipos de ejercicio, tipos de formularios dinamicos y ejercicios con multimedia imagenes y videos. Debe integrarse con Firestore y Firebase Storage, tener endpoints REST admin protegidos por rol admin, soporte de subida y gestion de media por ejercicio, y compatibilidad con el flujo de workouts existente."
+      },
+      "output": {
+        "command": "speckit.specify",
+        "integration": "copilot",
+        "model": null,
+        "options": {},
+        "input": {
+          "args": "Construir modulo de administracion completo para Gym Tracker con frontend y backend para gestionar zonas musculares, musculos, tipos de ejercicio, tipos de formularios dinamicos y ejercicios con multimedia imagenes y videos. Debe integrarse con Firestore y Firebase Storage, tener endpoints REST admin protegidos por rol admin, soporte de subida y gestion de media por ejercicio, y compatibilidad con el flujo de workouts existente."
+        },
+        "exit_code": 1,
+        "stdout": "",
+        "stderr": "",
+        "dispatched": true
+      },
+      "status": "failed"
+    }
+  },
+  "created_at": "2026-05-11T07:39:40.017956+00:00",
+  "updated_at": "2026-05-11T07:39:59.272339+00:00"
+}

@@ -1,0 +1,22 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>GymTracker.Infrastructure</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Google.Cloud.Firestore" Version="4.*" />
+    <PackageReference Include="Google.Cloud.Storage.V1" Version="4.*" />
+    <PackageReference Include="Microsoft.Data.SqlClient" Version="5.2.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\GymTracker.Application\GymTracker.Application.csproj" />
+    <ProjectReference Include="..\GymTracker.Domain\GymTracker.Domain.csproj" />
+  </ItemGroup>
+
+</Project>

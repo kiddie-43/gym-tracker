@@ -27,6 +27,24 @@ type WorkoutFormDraft = {
   setEntries: SetDraft[];
 };
 
+type NewWorkoutSetDraft = {
+  id: string;
+  weight: string;
+  reps: string;
+};
+
+type NewWorkoutDraft = {
+  workoutId: string | null;
+  currentStep: 1 | 2 | 3;
+  searchQuery: string;
+  selectedExerciseId: string | null;
+  activeSetId: string | null;
+  favoriteIds: string[];
+  performedAt: string;
+  notes: string;
+  sets: NewWorkoutSetDraft[];
+};
+
 type WorkoutsState = {
   from: string;
   to: string;
@@ -45,7 +63,18 @@ type WorkoutsState = {
   editError: string | null;
   deleteError: string | null;
   formDraft: WorkoutFormDraft;
+  newWorkoutDraft: NewWorkoutDraft;
 };
+
+const FAVORITES_STORAGE_KEY = 'gym-tracker.favorite-exercises';
+
+function createId() {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+
+  return `${Date.now()}-${Math.round(Math.random() * 100_000)}`;
+}
 
 function getDefaultPerformedAt() {
   const now = new Date();
@@ -61,6 +90,70 @@ function createDefaultFormDraft(): WorkoutFormDraft {
     performedAt: getDefaultPerformedAt(),
     status: 'completed',
     setEntries: [{ repetitions: '8', weight: '100' }],
+  };
+}
+
+function createDefaultNewWorkoutSet(from?: NewWorkoutSetDraft): NewWorkoutSetDraft {
+  return {
+    id: createId(),
+    weight: from?.weight ?? '0',
+    reps: from?.reps ?? '8',
+  };
+}
+
+function isPlaceholderSet(setEntry: NewWorkoutSetDraft | undefined): boolean {
+  if (!setEntry) {
+    return false;
+  }
+
+  return setEntry.weight === '0' && setEntry.reps === '8';
+}
+
+function readFavoriteIds(): string[] {
+  if (typeof window === 'undefined') {
+    return [];
+  }
+
+  try {
+    const raw = window.localStorage.getItem(FAVORITES_STORAGE_KEY);
+    if (!raw) {
+      return [];
+    }
+
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
+
+    return parsed.filter((id): id is string => typeof id === 'string');
+  } catch {
+    return [];
+  }
+}
+
+function persistFavoriteIds(ids: string[]) {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  try {
+    window.localStorage.setItem(FAVORITES_STORAGE_KEY, JSON.stringify(ids));
+  } catch {
+    // Ignore storage errors.
+  }
+}
+
+function createDefaultNewWorkoutDraft(favoriteIds: string[] = []): NewWorkoutDraft {
+  return {
+    workoutId: null,
+    currentStep: 1,
+    searchQuery: '',
+    selectedExerciseId: null,
+    activeSetId: null,
+    favoriteIds,
+    performedAt: getDefaultPerformedAt(),
+    notes: '',
+    sets: [createDefaultNewWorkoutSet()],
   };
 }
 
@@ -107,6 +200,7 @@ const initialState: WorkoutsState = {
   editError: null,
   deleteError: null,
   formDraft: createDefaultFormDraft(),
+  newWorkoutDraft: createDefaultNewWorkoutDraft(),
 };
 
 export const loadCatalogExercises = createAsyncThunk<Exercise[], void, { rejectValue: string }>(
@@ -145,6 +239,17 @@ export const startEditWorkout = createAsyncThunk<WorkoutSummary, string, { rejec
   },
 );
 
+export const startEditWorkoutForm = createAsyncThunk<WorkoutSummary, string, { rejectValue: string }>(
+  'workouts/startEditWorkoutForm',
+  async (workoutId, { rejectWithValue }) => {
+    try {
+      return await getWorkout(workoutId);
+    } catch (error) {
+      return rejectWithValue(getErrorMessage(error, 'Error al cargar el entrenamiento para editar.'));
+    }
+  },
+);
+
 export const submitCreateWorkout = createAsyncThunk<void, CreateWorkoutRequest, { state: RootState; rejectValue: string }>(
   'workouts/submitCreateWorkout',
   async (request, { dispatch, rejectWithValue }) => {
@@ -153,6 +258,79 @@ export const submitCreateWorkout = createAsyncThunk<void, CreateWorkoutRequest, 
       await dispatch(loadWorkoutHistory()).unwrap();
     } catch (error) {
       return rejectWithValue(getErrorMessage(error, 'Error al crear el entrenamiento.'));
+    }
+  },
+);
+
+export const submitNewWorkoutDraft = createAsyncThunk<void, void, { state: RootState; rejectValue: string }>(
+  'workouts/submitNewWorkoutDraft',
+  async (_, { dispatch, getState, rejectWithValue }) => {
+    const { newWorkoutDraft, exercises } = getState().workouts;
+
+    const selectedExercise = exercises.find((exercise) => exercise.id === newWorkoutDraft.selectedExerciseId);
+
+    if (!selectedExercise) {
+      return rejectWithValue('Debes seleccionar un ejercicio.');
+    }
+
+    const cleanSets = newWorkoutDraft.sets.filter((setEntry) => {
+      return setEntry.weight.trim() || setEntry.reps.trim();
+    });
+
+    if (cleanSets.length === 0) {
+      return rejectWithValue('Debes agregar al menos una serie.');
+    }
+
+    const mappedSets = [] as CreateWorkoutRequest['exerciseEntries'][0]['sets'];
+    for (const setEntry of cleanSets) {
+      const repetitions = Number(setEntry.reps);
+      const weight = Number(setEntry.weight);
+
+      if (!Number.isFinite(repetitions) || repetitions <= 0) {
+        return rejectWithValue('Las repeticiones deben ser mayores que 0.');
+      }
+
+      if (!Number.isFinite(weight) || weight < 0) {
+        return rejectWithValue('El peso debe ser un numero valido (0 o mayor).');
+      }
+
+      mappedSets.push({
+        repetitions,
+        weight,
+        restSeconds: 120,
+        completed: true,
+      });
+    }
+
+    const performedAtDate = new Date(newWorkoutDraft.performedAt);
+    const safePerformedAt = Number.isNaN(performedAtDate.getTime()) ? new Date() : performedAtDate;
+
+    const request: CreateWorkoutRequest = {
+      performedAt: safePerformedAt.toISOString(),
+      status: 'completed',
+      notes: newWorkoutDraft.notes,
+      exerciseEntries: [
+        {
+          externalExerciseId: selectedExercise.id,
+          exerciseName: selectedExercise.name,
+          muscleGroupIds: selectedExercise.muscleGroupIds,
+          imageUrl: selectedExercise.imageUrl,
+          formTypeId: selectedExercise.formTypeId,
+          formTypeCode: selectedExercise.formTypeCode,
+          sets: mappedSets,
+        },
+      ],
+    };
+
+    try {
+      if (newWorkoutDraft.workoutId) {
+        await updateWorkout(newWorkoutDraft.workoutId, request);
+      } else {
+        await createWorkout(request);
+      }
+      await dispatch(loadWorkoutHistory()).unwrap();
+    } catch (error) {
+      return rejectWithValue(getErrorMessage(error, 'Error al guardar el entrenamiento.'));
     }
   },
 );
@@ -254,6 +432,115 @@ const workoutsSlice = createSlice({
 
       entry[action.payload.field] = action.payload.value;
     },
+    initNewWorkoutDraft(state) {
+      state.newWorkoutDraft = createDefaultNewWorkoutDraft(readFavoriteIds());
+      state.createError = null;
+      state.editError = null;
+    },
+    setNewWorkoutStep(state, action: PayloadAction<1 | 2 | 3>) {
+      state.newWorkoutDraft.currentStep = action.payload;
+    },
+    setNewWorkoutSearchQuery(state, action: PayloadAction<string>) {
+      state.newWorkoutDraft.searchQuery = action.payload;
+    },
+    selectNewWorkoutExercise(state, action: PayloadAction<string>) {
+      state.newWorkoutDraft.selectedExerciseId = action.payload;
+      state.newWorkoutDraft.currentStep = 2;
+      state.createError = null;
+    },
+    setNewWorkoutPerformedAt(state, action: PayloadAction<string>) {
+      state.newWorkoutDraft.performedAt = action.payload;
+    },
+    setNewWorkoutNotes(state, action: PayloadAction<string>) {
+      state.newWorkoutDraft.notes = action.payload;
+    },
+    setNewWorkoutActiveSet(state, action: PayloadAction<string | null>) {
+      state.newWorkoutDraft.activeSetId = action.payload;
+    },
+    addNewWorkoutSet(
+      state,
+      action: PayloadAction<{ weight?: string; reps?: string } | undefined>,
+    ) {
+      const currentSets = state.newWorkoutDraft.sets;
+      if (currentSets.length >= 30) {
+        return;
+      }
+
+      const payloadWeight = action.payload?.weight;
+      const payloadReps = action.payload?.reps;
+
+      if (currentSets.length === 1 && isPlaceholderSet(currentSets[0]) && (payloadWeight || payloadReps)) {
+        currentSets[0].weight = payloadWeight ?? currentSets[0].weight;
+        currentSets[0].reps = payloadReps ?? currentSets[0].reps;
+        state.newWorkoutDraft.activeSetId = currentSets[0].id;
+        return;
+      }
+
+      const last = currentSets[currentSets.length - 1];
+      currentSets.push(
+        createDefaultNewWorkoutSet({
+          id: createId(),
+          weight: payloadWeight ?? last?.weight ?? '0',
+          reps: payloadReps ?? last?.reps ?? '8',
+        }),
+      );
+      state.newWorkoutDraft.activeSetId = currentSets[currentSets.length - 1].id;
+    },
+    removeNewWorkoutSet(state, action: PayloadAction<string>) {
+      const currentSets = state.newWorkoutDraft.sets;
+      if (currentSets.length <= 1) {
+        state.newWorkoutDraft.sets = [{ ...currentSets[0], weight: '0', reps: '8' }];
+        return;
+      }
+
+      state.newWorkoutDraft.sets = currentSets.filter((setEntry) => setEntry.id !== action.payload);
+      if (state.newWorkoutDraft.activeSetId === action.payload) {
+        state.newWorkoutDraft.activeSetId = null;
+      }
+    },
+    updateNewWorkoutSet(
+      state,
+      action: PayloadAction<{ id: string; field: 'weight' | 'reps'; value: string }>,
+    ) {
+      const setEntry = state.newWorkoutDraft.sets.find((setItem) => setItem.id === action.payload.id);
+      if (!setEntry) {
+        return;
+      }
+
+      setEntry[action.payload.field] = action.payload.value;
+    },
+    toggleFavoriteExercise(state, action: PayloadAction<string>) {
+      const current = state.newWorkoutDraft.favoriteIds;
+      const id = action.payload;
+      const next = current.includes(id) ? current.filter((item) => item !== id) : [id, ...current].slice(0, 40);
+      state.newWorkoutDraft.favoriteIds = next;
+      persistFavoriteIds(next);
+    },
+    applyQuickAction(
+      state,
+      action: PayloadAction<{ type: 'add-2-5' | 'add-5' | 'repeat-last' }>,
+    ) {
+      const sets = state.newWorkoutDraft.sets;
+      if (sets.length === 0) {
+        return;
+      }
+
+      if (action.payload.type === 'repeat-last') {
+        sets.push(createDefaultNewWorkoutSet(sets[sets.length - 1]));
+        return;
+      }
+
+      const activeId = state.newWorkoutDraft.activeSetId;
+      const target = (activeId && sets.find((setItem) => setItem.id === activeId)) ?? sets[sets.length - 1];
+      if (!target) {
+        return;
+      }
+
+      const currentWeight = Number(target.weight);
+      const safeWeight = Number.isFinite(currentWeight) ? currentWeight : 0;
+      const delta = action.payload.type === 'add-2-5' ? 2.5 : 5;
+      target.weight = String(Math.round((safeWeight + delta) * 100) / 100);
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -290,6 +577,37 @@ const workoutsSlice = createSlice({
         state.isLoadingWorkout = false;
         state.editError = action.payload ?? 'Error al cargar el entrenamiento.';
       })
+      .addCase(startEditWorkoutForm.pending, (state) => {
+        state.isLoadingWorkout = true;
+        state.editError = null;
+      })
+      .addCase(startEditWorkoutForm.fulfilled, (state, action) => {
+        const entry = action.payload.exerciseEntries?.[0];
+        const sets = entry?.sets && entry.sets.length > 0
+          ? entry.sets.map((setEntry) => ({
+              id: createId(),
+              weight: String(setEntry.weight ?? 0),
+              reps: String(setEntry.repetitions),
+            }))
+          : [createDefaultNewWorkoutSet()];
+
+        state.isLoadingWorkout = false;
+        state.newWorkoutDraft = {
+          workoutId: action.payload.id,
+          currentStep: 2,
+          searchQuery: entry?.exerciseNameSnapshot ?? entry?.exerciseName ?? '',
+          selectedExerciseId: entry?.externalExerciseId ?? null,
+          activeSetId: null,
+          favoriteIds: state.newWorkoutDraft.favoriteIds,
+          performedAt: action.payload.performedAt ? new Date(action.payload.performedAt).toISOString().slice(0, 16) : getDefaultPerformedAt(),
+          notes: '',
+          sets,
+        };
+      })
+      .addCase(startEditWorkoutForm.rejected, (state, action) => {
+        state.isLoadingWorkout = false;
+        state.editError = action.payload ?? 'Error al cargar el entrenamiento para editar.';
+      })
       .addCase(submitCreateWorkout.pending, (state) => {
         state.isSubmitting = true;
         state.createError = null;
@@ -302,6 +620,18 @@ const workoutsSlice = createSlice({
       .addCase(submitCreateWorkout.rejected, (state, action) => {
         state.isSubmitting = false;
         state.createError = action.payload ?? 'Error al crear el entrenamiento.';
+      })
+      .addCase(submitNewWorkoutDraft.pending, (state) => {
+        state.isSubmitting = true;
+        state.createError = null;
+      })
+      .addCase(submitNewWorkoutDraft.fulfilled, (state) => {
+        state.isSubmitting = false;
+        state.newWorkoutDraft = createDefaultNewWorkoutDraft(state.newWorkoutDraft.favoriteIds);
+      })
+      .addCase(submitNewWorkoutDraft.rejected, (state, action) => {
+        state.isSubmitting = false;
+        state.createError = action.payload ?? 'Error al guardar el entrenamiento.';
       })
       .addCase(submitUpdateWorkout.pending, (state) => {
         state.isSubmitting = true;
@@ -348,6 +678,18 @@ export const {
   addFormSetEntry,
   removeFormSetEntry,
   updateFormSetEntry,
+  initNewWorkoutDraft,
+  setNewWorkoutStep,
+  setNewWorkoutSearchQuery,
+  selectNewWorkoutExercise,
+  setNewWorkoutPerformedAt,
+  setNewWorkoutNotes,
+  setNewWorkoutActiveSet,
+  addNewWorkoutSet,
+  removeNewWorkoutSet,
+  updateNewWorkoutSet,
+  toggleFavoriteExercise,
+  applyQuickAction,
 } = workoutsSlice.actions;
 
 export const workoutsReducer = workoutsSlice.reducer;

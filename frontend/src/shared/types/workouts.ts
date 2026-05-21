@@ -8,6 +8,14 @@ export type WorkoutSummary = {
     exerciseName?: string;
     exerciseNameSnapshot?: string;
     imageUrl?: string | null;
+    exerciseSnapshot?: {
+      exerciseId: string;
+      name: string;
+      coverStoragePath?: string | null;
+      formTypeId: string;
+      formTypeCode: string;
+      capturedAt: string;
+    } | null;
     sets?: Array<{
       repetitions: number;
       weight?: number | null;
@@ -31,6 +39,8 @@ export type ExerciseEntryInput = {
   sets: WorkoutSetInput[];
   notes?: string;
   imageUrl?: string | null;
+  formTypeId?: string;
+  formTypeCode?: string;
 };
 
 export type CreateWorkoutRequest = {

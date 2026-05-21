@@ -19,6 +19,7 @@ import Stack from '@mui/material/Stack';
 import Switch from '@mui/material/Switch';
 import Toolbar from '@mui/material/Toolbar';
 import Typography from '@mui/material/Typography';
+import AdminPanelSettingsRoundedIcon from '@mui/icons-material/AdminPanelSettingsRounded';
 import FitnessCenterRoundedIcon from '@mui/icons-material/FitnessCenterRounded';
 import InsightsRoundedIcon from '@mui/icons-material/InsightsRounded';
 import LogoutRoundedIcon from '@mui/icons-material/LogoutRounded';
@@ -37,6 +38,7 @@ import { useAppPreferences } from '../../app/context/AppPreferencesContext';
 
 const links = [
   { to: '/', labelKey: 'nav.overview', icon: HomeRoundedIcon },
+  { to: '/administration', labelKey: 'nav.administration', icon: AdminPanelSettingsRoundedIcon },
   { to: '/workouts', labelKey: 'nav.workout', icon: FitnessCenterRoundedIcon },
   { to: '/progress/bench-press', labelKey: 'nav.progress', icon: InsightsRoundedIcon },
   { to: '/routines/new', labelKey: 'nav.routines', icon: SportsGymnasticsRoundedIcon },

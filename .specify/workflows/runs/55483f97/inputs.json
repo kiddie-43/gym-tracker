@@ -1,0 +1,7 @@
+{
+  "inputs": {
+    "spec": "Construir modulo de administracion completo para Gym Tracker con frontend y backend para gestionar zonas musculares, musculos, tipos de ejercicio, tipos de formularios dinamicos y ejercicios con multimedia imagenes y videos. Debe integrarse con Firestore y Firebase Storage, tener endpoints REST admin protegidos por rol admin, soporte de subida y gestion de media por ejercicio, y compatibilidad con el flujo de workouts existente.",
+    "integration": "copilot",
+    "scope": "full"
+  }
+}

@@ -42,6 +42,10 @@ function resolveExerciseImageUrl(imageUrl?: string | null): string | undefined {
     return imageUrl;
   }
 
+  if (imageUrl.startsWith('admin/') || imageUrl.startsWith('gs://')) {
+    return undefined;
+  }
+
   if (imageUrl.startsWith('/')) {
     return `https://wger.de${imageUrl}`;
   }
@@ -128,6 +132,8 @@ export function WorkoutEntryForm({
           exerciseName: selectedExercise.name,
           muscleGroupIds: selectedExercise.muscleGroupIds,
           imageUrl: selectedExercise.imageUrl,
+          formTypeId: selectedExercise.formTypeId,
+          formTypeCode: selectedExercise.formTypeCode,
           sets: setsToSubmit.map((setEntry) => ({
             repetitions: Number(setEntry.repetitions),
             weight: Number(setEntry.weight),

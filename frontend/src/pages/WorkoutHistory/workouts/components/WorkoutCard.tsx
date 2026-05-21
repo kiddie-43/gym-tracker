@@ -25,6 +25,11 @@ function resolveImageUrl(imageUrl?: string | null): string | undefined {
     return imageUrl;
   }
 
+  if (imageUrl.startsWith('admin/') || imageUrl.startsWith('gs://')) {
+    // Firebase storage paths are not directly renderable URLs on the client.
+    return undefined;
+  }
+
   if (imageUrl.startsWith('/')) {
     return `https://wger.de${imageUrl}`;
   }
@@ -33,6 +38,11 @@ function resolveImageUrl(imageUrl?: string | null): string | undefined {
 }
 
 function resolveExerciseLabel(workout: WorkoutSummary): string {
+  const entrySnapshotName = workout.exerciseEntries?.[0]?.exerciseSnapshot?.name?.trim();
+  if (entrySnapshotName) {
+    return entrySnapshotName;
+  }
+
   const snapshotName = workout.exerciseEntries?.[0]?.exerciseNameSnapshot?.trim();
   if (snapshotName) {
     return snapshotName;
@@ -53,7 +63,9 @@ function resolveExerciseLabel(workout: WorkoutSummary): string {
 
 export function WorkoutCard({ workout, onEdit, onDelete, formatDate }: WorkoutCardProps) {
   const exerciseLabel = resolveExerciseLabel(workout);
-  const exerciseImageUrl = resolveImageUrl(workout.exerciseEntries?.[0]?.imageUrl);
+  const exerciseImageUrl = resolveImageUrl(
+    workout.exerciseEntries?.[0]?.exerciseSnapshot?.coverStoragePath ?? workout.exerciseEntries?.[0]?.imageUrl,
+  );
 
   return (
     <Card 

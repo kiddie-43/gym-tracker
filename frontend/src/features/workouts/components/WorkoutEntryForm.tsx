@@ -22,7 +22,7 @@ import {
   setFormStatus,
   setSelectedExerciseId,
   updateFormSetEntry,
-} from '../state/workoutsSlice';
+} from '../../../redux/stados/workoutsState';
 
 type WorkoutEntryFormProps = {
   onSubmit: (request: CreateWorkoutRequest) => Promise<void> | void;

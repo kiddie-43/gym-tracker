@@ -1,11 +1,14 @@
 import Container from '@mui/material/Container';
 import Box from '@mui/material/Box';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
 
 import { AppHeader } from './AppHeader';
 import { AppFooter } from './AppFooter';
 
 export function AppLayout() {
+  const location = useLocation();
+  const isAdministrationRoute = location.pathname.startsWith('/administration');
+
   return (
     <Box
       sx={{
@@ -18,10 +21,11 @@ export function AppLayout() {
     >
       <AppHeader />
       <Container
-        maxWidth="lg"
+        maxWidth={isAdministrationRoute ? false : 'lg'}
         sx={{
-          pt: { xs: 3, md: 4 },
-          pb: { xs: 3, md: 4 },
+          pt: isAdministrationRoute ? 0 : { xs: 3, md: 4 },
+          pb: isAdministrationRoute ? 0 : { xs: 3, md: 4 },
+          px: isAdministrationRoute ? 0 : undefined,
           flexGrow: 1,
           minHeight: 0,
           overflowY: 'auto',

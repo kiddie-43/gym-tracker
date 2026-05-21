@@ -2,6 +2,15 @@ import { Exercise } from '../../interfaces/catalog';
 import { CreateWorkoutRequest, WorkoutProgress, WorkoutSummary } from '../../interfaces/workouts';
 import { apiFetch } from '../httpClient';
 
+type WorkoutCatalogExerciseDto = {
+  id: string;
+  name: string;
+  muscleGroupIds: string[];
+  coverStoragePath?: string | null;
+  formTypeId: string;
+  formTypeCode: string;
+};
+
 export function createWorkout(request: CreateWorkoutRequest) {
   return apiFetch<WorkoutSummary>('/api/workouts', {
     method: 'POST',
@@ -38,12 +47,31 @@ export function getWorkoutHistory(page = 1, pageSize = 20, from?: string, to?: s
   });
 }
 
-export function listCatalogExercises() {
-  return apiFetch<Exercise[]>('/api/catalog/exercises', {
+export function listCatalogExercises(query?: string, muscleGroupIds?: string[]) {
+  const params = new URLSearchParams();
+  if (query) {
+    params.set('query', query);
+  }
+
+  for (const id of muscleGroupIds ?? []) {
+    params.append('muscleGroupIds', id);
+  }
+
+  const queryString = params.toString();
+  const path = queryString ? `/api/workouts/exercise-catalog?${queryString}` : '/api/workouts/exercise-catalog';
+
+  return apiFetch<WorkoutCatalogExerciseDto[]>(path, {
     headers: {
       Authorization: 'Bearer demo-user',
     },
-  });
+  }).then((rows) => rows.map((row) => ({
+    id: row.id,
+    name: row.name,
+    muscleGroupIds: row.muscleGroupIds,
+    imageUrl: row.coverStoragePath ?? null,
+    formTypeId: row.formTypeId,
+    formTypeCode: row.formTypeCode,
+  })));
 }
 
 export function getWorkout(workoutId: string) {

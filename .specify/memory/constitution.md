@@ -80,6 +80,22 @@ Rationale: el producto existe para mostrar progreso real, no solo para registrar
 - Listados grandes MUST usar paginacion y endpoints criticos MUST definir objetivo de
 	latencia p95.
 
+## Guias de Implementacion Obligatorias
+
+Las skills del proyecto codifican las decisiones de arquitectura aprobadas y son la
+referencia autoritativa de como implementar cada capa. MUST consultarse la skill
+correspondiente antes de crear o modificar cualquier artefacto en su dominio. MUST NOT
+tomarse decisiones de estructura, naming o patron que contradigan una skill sin
+documentar la excepcion y su justificacion por escrito.
+
+| Skill | Cuando es obligatorio consultarla |
+|---|---|
+| `frontend-architecture` | Al crear cualquier carpeta, archivo o modulo en el frontend |
+| `frontend-components` | Al crear o modificar cualquier componente `.tsx` |
+| `frontend-redux` | Al crear o modificar acciones, reducers, states o el store |
+| `frontend-services` | Al crear o modificar un servicio en `services/` |
+| `backend-modular` | Al crear o modificar un endpoint, controlador, servicio o entidad |
+
 ## Flujo de Desarrollo, Definition of Done y Checklist de PR
 
 - Ninguna feature MUST pasar a implementacion sin flujo Spec Kit completo:
@@ -96,6 +112,12 @@ Definition of Done (obligatoria para cada feature):
 	- Frontend: componentes y flujos principales.
 - Metricas de comparacion funcionando y validadas contra datos reales.
 - Documentacion minima y criterios de aceptacion actualizados.
+- Implementacion frontend conforme a las skills del proyecto:
+	- Estructura de carpetas segun `frontend-architecture`.
+	- Componentes segun `frontend-components` (MUI, tema, reutilizacion, FeedbackMessage).
+	- Estado Redux segun `frontend-redux` (solo la page conectada, thunks estandar, form/filters/list en Redux).
+	- Servicios segun `frontend-services` (contrato CRUD, httpClient centralizado).
+- Implementacion backend conforme a `backend-modular` (capas, CRUD estandar, paginacion).
 
 Checklist de PR de cumplimiento constitucional:
 
@@ -105,9 +127,14 @@ Checklist de PR de cumplimiento constitucional:
 - [ ] Pruebas requeridas agregadas/actualizadas y en verde.
 - [ ] Manejo de errores y logging estructurado implementados.
 - [ ] Reglas Firebase revisadas y aplicadas.
-- [ ] Integracion Wger con cache y fallback validada.
-- [ ] Comparativas de progreso correctas y trazables.
-- [ ] UI con estados de carga/error/vacio implementados.
+- [ ] Integracion Wger con cache y fallback validada (si aplica).
+- [ ] Comparativas de progreso correctas y trazables (si aplica).
+- [ ] UI con estados de carga/error/vacio implementados mediante `FeedbackMessage`.
+- [ ] Estructura de carpetas frontend conforme a `frontend-architecture`.
+- [ ] Componentes frontend conformes a `frontend-components` (MUI, tema, sin estilos hardcodeados).
+- [ ] Redux conforme a `frontend-redux` (solo Page conectada, form/filters/list en Redux, thunks con loading/error/finally).
+- [ ] Servicios conformes a `frontend-services` (contrato CRUD completo, httpClient reutilizado).
+- [ ] Backend conforme a `backend-modular` (capas, validacion de entrada, paginacion).
 - [ ] Documentacion y ADR (si aplica) actualizadas.
 
 ## Governance
