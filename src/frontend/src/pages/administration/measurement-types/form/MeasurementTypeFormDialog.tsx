@@ -26,6 +26,10 @@ export function MeasurementTypeFormDialog({
   onChange,
 }: MeasurementTypeFormDialogProps) {
   const { t } = useTranslation();
+  const disableSave =
+    loading ||
+    (formState.code ?? '').trim().length === 0 ||
+    (formState.name ?? '').trim().length === 0;
 
   return (
     <PopupDialog
@@ -34,6 +38,7 @@ export function MeasurementTypeFormDialog({
       onClose={onClose}
       closeLabel={t('common.actions.cancel')}
       saveLabel={t('common.actions.save')}
+      disableSave={disableSave}
       isSaving={loading}
       onSubmit={onSubmit}
     >

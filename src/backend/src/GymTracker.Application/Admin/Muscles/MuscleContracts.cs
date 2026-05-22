@@ -16,8 +16,7 @@ public sealed record MuscleResponse(
     bool Active,
     bool IsDeleted,
     DateTimeOffset CreatedAt,
-    DateTimeOffset UpdatedAt,
-    DateTimeOffset? DeletedAt);
+    DateTimeOffset UpdatedAt);
 
 public sealed record MusclesPageResponse(
     IReadOnlyCollection<MuscleResponse> Items,

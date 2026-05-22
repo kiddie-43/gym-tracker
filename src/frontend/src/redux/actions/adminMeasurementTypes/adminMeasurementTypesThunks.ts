@@ -40,7 +40,7 @@ export const fetchAdminMeasurementTypes = createAsyncThunk<IMeasurementTypes, vo
         code: filters.code || undefined,
         sortBy: table.sortBy,
         sortDirection: table.sortDirection,
-        page: table.page + 1,
+        page: table.page,
         pageSize: table.rowsPerPage,
       });
     } catch (error) {

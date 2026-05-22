@@ -41,6 +41,13 @@ export function ExerciseFormDialog({
   const selectedMeasurementTypes = referenceMeasurementTypes.filter(
     (m) => m.id !== undefined && (formState.measurementTypeIds ?? []).includes(m.id),
   );
+  const disableSave =
+    loading ||
+    (formState.name ?? '').trim().length === 0 ||
+    (formState.category ?? '').trim().length === 0 ||
+    (formState.difficulty ?? '').trim().length === 0 ||
+    formState.primaryMuscles.length === 0 ||
+    (formState.measurementTypeIds ?? []).length === 0;
 
   return (
     <PopupDialog
@@ -49,6 +56,7 @@ export function ExerciseFormDialog({
       onClose={onClose}
       closeLabel={t('common.actions.cancel')}
       saveLabel={t('common.actions.save')}
+      disableSave={disableSave}
       isSaving={loading}
       onSubmit={onSubmit}
     >

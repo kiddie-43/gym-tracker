@@ -26,6 +26,10 @@ export function MuscleFormDialog({
   onChange,
 }: MuscleFormDialogProps) {
   const { t } = useTranslation();
+  const disableSave =
+    loading ||
+    formState.name.trim().length === 0 ||
+    formState.code.trim().length === 0;
 
   return (
     <PopupDialog
@@ -34,6 +38,7 @@ export function MuscleFormDialog({
       onClose={onClose}
       closeLabel={t('common.actions.cancel')}
       saveLabel={t('common.actions.save')}
+      disableSave={disableSave}
       isSaving={loading}
       onSubmit={onSubmit}
     >

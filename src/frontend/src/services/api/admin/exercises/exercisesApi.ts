@@ -21,17 +21,20 @@ type ExerciseApiRow = {
   category: string;
   primaryMuscles: IMuscle[];
   secondaryMuscles: IMuscle[];
+  primaryMuscleIds?: string[];
+  secondaryMuscleIds?: string[];
   measurementTypeIds: string[];
   measurementTypeNames: string[];
-  images: string[];
-  videos: string[];
+  images?: string[];
+  videos?: string[];
   isDeleted: boolean;
   deletedAt?: string | null;
 };
 
 type ExercisesPageApiRow = {
   items: ExerciseApiRow[];
-  totalCount: number;
+  total?: number;
+  totalCount?: number;
   page: number;
   pageSize: number;
 };
@@ -63,8 +66,8 @@ function toIExercise(row: ExerciseApiRow): IExercise {
     measurementTypeNames: row.measurementTypeNames ?? [],
     primaryMuscles: row.primaryMuscles ?? [],
     secondaryMuscles: row.secondaryMuscles ?? [],
-    images: row.images,
-    videos: row.videos,
+    images: row.images ?? [],
+    videos: row.videos ?? [],
     deletedAt: row.deletedAt,
   };
 }
@@ -148,8 +151,8 @@ function toIExercisesPage(row: ExercisesPageApiRow): IExercises {
 
   return {
     items: items.map(toIExercise),
-    totalCount: typeof row.totalCount === 'number' ? row.totalCount : items.length,
-    page: typeof row.page === 'number' && row.page > 0 ? row.page : 1,
+    totalCount: typeof row.totalCount === 'number' ? row.totalCount : (typeof row.total === 'number' ? row.total : items.length),
+    page: typeof row.page === 'number' && row.page >= 0 ? row.page : 0,
     pageSize: typeof row.pageSize === 'number' && row.pageSize > 0 ? row.pageSize : (items.length || 10),
   };
 }
@@ -187,7 +190,7 @@ function toListQueryParams(query: IExercisesFilter): string {
     query.secondaryMuscleIds.forEach((id: string) => params.append('secondaryMuscleIds', id));
   }
 
-  if (query.page && query.page > 0) {
+  if (typeof query.page === 'number' && query.page >= 0) {
     params.set('page', String(query.page));
   }
 

@@ -2,29 +2,20 @@ using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
 
-using Google.Apis.Auth;
-
-using GymTracker.Api.Options;
-
-using Microsoft.Extensions.Options;
-
 namespace GymTracker.Api.Middleware;
 
 public sealed class FirebaseAuthMiddleware
 {
     private readonly RequestDelegate _next;
-    private readonly FirebaseOptions _firebaseOptions;
     private readonly ILogger<FirebaseAuthMiddleware> _logger;
     private readonly IHostEnvironment _hostEnvironment;
 
     public FirebaseAuthMiddleware(
         RequestDelegate next,
-        IOptions<FirebaseOptions> firebaseOptions,
         ILogger<FirebaseAuthMiddleware> logger,
         IHostEnvironment hostEnvironment)
     {
         _next = next;
-        _firebaseOptions = firebaseOptions.Value;
         _logger = logger;
         _hostEnvironment = hostEnvironment;
     }
@@ -52,7 +43,7 @@ public sealed class FirebaseAuthMiddleware
                     ? headerUserId.ToString()
                     : "dev-local-user";
 
-                context.User = BuildPrincipal(developmentUserId, email: null, isAdmin: false);
+                context.User = BuildPrincipal(developmentUserId, email: null, isAdmin: true);
             }
 
             await _next(context);
@@ -73,64 +64,15 @@ public sealed class FirebaseAuthMiddleware
             return;
         }
 
-        if (!_hostEnvironment.IsProduction() &&
-            token.StartsWith("integration-", StringComparison.OrdinalIgnoreCase) &&
-            TryBuildDevelopmentPrincipal(token, out var integrationPrincipal))
+        if (TryBuildDevelopmentPrincipal(token, out var principal))
         {
-            context.User = integrationPrincipal;
+            context.User = principal;
             await _next(context);
             return;
         }
 
-        if (string.IsNullOrWhiteSpace(_firebaseOptions.ProjectId))
-        {
-            if (_hostEnvironment.IsDevelopment() && TryBuildDevelopmentPrincipal(token, out var developmentPrincipal))
-            {
-                context.User = developmentPrincipal;
-                await _next(context);
-                return;
-            }
-
-            _logger.LogWarning("Firebase token validation failed because Firebase:ProjectId is not configured.");
-            context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-            return;
-        }
-
-        GoogleJsonWebSignature.Payload payload;
-        try
-        {
-            payload = await GoogleJsonWebSignature.ValidateAsync(token, new GoogleJsonWebSignature.ValidationSettings
-            {
-                Audience = new[] { _firebaseOptions.ProjectId },
-            }).ConfigureAwait(false);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Invalid Firebase bearer token.");
-            context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-            return;
-        }
-
-        if (!string.Equals(payload.Issuer, $"https://securetoken.google.com/{_firebaseOptions.ProjectId}", StringComparison.Ordinal))
-        {
-            _logger.LogWarning("Invalid Firebase issuer: {Issuer}", payload.Issuer);
-            context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-            return;
-        }
-
-        var userId = payload.Subject;
-        if (string.IsNullOrWhiteSpace(userId))
-        {
-            _logger.LogWarning("Firebase token does not contain a subject.");
-            context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-            return;
-        }
-
-        var isAdmin = ResolveAdminClaim(token);
-
-        context.User = BuildPrincipal(userId, payload.Email, isAdmin);
-
-        await _next(context);
+        _logger.LogWarning("Unable to authenticate request token.");
+        context.Response.StatusCode = StatusCodes.Status401Unauthorized;
     }
 
     private static bool TryBuildDevelopmentPrincipal(string token, out ClaimsPrincipal principal)

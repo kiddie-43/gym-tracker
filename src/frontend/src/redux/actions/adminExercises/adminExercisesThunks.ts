@@ -6,7 +6,7 @@ import type {
   IImportExerciseCsvRowRequest,
   IImportExercisesResult,
 } from '../../../interfaces/admin/exercises/exercises';
-import type { IMeasurementType } from '../../../interfaces/admin/measurementTypes/measurementTypes';
+import type { IAssignableMeasurementType, IMeasurementType } from '../../../interfaces/admin/measurementTypes/measurementTypes';
 import type { IMuscle } from '../../../interfaces/muscles/IMuscles';
 import {
   createExercise,
@@ -16,7 +16,7 @@ import {
   reactivateExercise,
   updateExercise,
 } from '../../../services/api/admin/exercises/exercisesApi';
-import { listMeasurementTypesPage } from '../../../services/api/admin/measurementTypes/measurementTypesApi';
+import { listAssignableMeasurementTypes } from '../../../services/api/admin/measurementTypes/measurementTypesApi';
 import { listMusclesPage } from '../../../services/api/admin/muscles/musclesApi';
 import type { RootState } from '../../store';
 
@@ -46,7 +46,7 @@ export const fetchAdminExercises = createAsyncThunk<IExercises, void, AdminExerc
         secondaryMuscleIds: filters.secondaryMuscleIds,
         sortBy: table.sortBy,
         sortDirection: table.sortDirection,
-        page: table.page + 1,
+        page: table.page,
         pageSize: table.rowsPerPage,
       });
     } catch (error) {
@@ -136,15 +136,25 @@ export const loadAdminExercisesReferenceData = createAsyncThunk<
   async (_arg, { rejectWithValue }) => {
     try {
       const [musclesPage, measurementTypesPage] = await Promise.all([
-        listMusclesPage({ page: 1, pageSize: 500 }),
-        listMeasurementTypesPage({ page: 1, pageSize: 500 }),
+        listMusclesPage({ page: 0, pageSize: 500 }),
+        listAssignableMeasurementTypes(),
       ]);
       return {
         muscles: musclesPage.items,
-        measurementTypes: measurementTypesPage.items,
+        measurementTypes: measurementTypesPage.map(mapAssignableMeasurementTypeToMeasurementType),
       };
     } catch (error) {
       return rejectWithValue(toErrorMessage(error, 'No se pudo cargar los datos de referencia.'));
     }
   },
 );
+
+function mapAssignableMeasurementTypeToMeasurementType(value: IAssignableMeasurementType): IMeasurementType {
+  return {
+    id: value.id,
+    code: value.code,
+    name: value.name,
+    description: value.description,
+    isDeleted: false,
+  };
+}

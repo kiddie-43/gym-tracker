@@ -1,26 +1,19 @@
+using GymTracker.Domain.Entities;
+
 namespace GymTracker.Application.Admin.MeasurementTypes;
 
 public interface IMeasurementTypeRepository
 {
-    Task<MeasurementTypesPageResponse> ListPageAsync(
-        bool includeInactive = false,
-        string? search = null,
-        string? code = null,
-        string sortBy = "name",
-        string sortDirection = "asc",
-        int page = 1,
-        int pageSize = 10,
-        CancellationToken cancellationToken = default);
+    Task<MeasurementType?> GetByIdAsync(string id, CancellationToken cancellationToken = default);
 
-    Task<IReadOnlyCollection<AssignableMeasurementTypeResponse>> ListAssignableAsync(CancellationToken cancellationToken = default);
+    Task<IReadOnlyCollection<MeasurementType>> ListAsync(bool includeDeleted = false, CancellationToken cancellationToken = default);
 
-    Task<MeasurementTypeResponse?> GetByIdAsync(string id, CancellationToken cancellationToken = default);
+    Task<bool> ExistsActiveCodeAsync(string code, string? excludeId = null, CancellationToken cancellationToken = default);
 
-    Task<MeasurementTypeResponse> CreateAsync(UpsertMeasurementTypeRequest request, CancellationToken cancellationToken = default);
+    Task SaveAsync(MeasurementType entity, CancellationToken cancellationToken = default);
 
-    Task<MeasurementTypeResponse?> UpdateAsync(string id, UpsertMeasurementTypeRequest request, CancellationToken cancellationToken = default);
+    Task<bool> DeleteAsync(string id, DateTimeOffset now, CancellationToken cancellationToken = default);
 
-    Task<bool> DeleteAsync(string id, CancellationToken cancellationToken = default);
-
-    Task<MeasurementTypeResponse?> ReactivateAsync(string id, CancellationToken cancellationToken = default);
+    Task<bool> ReactivateAsync(string id, CancellationToken cancellationToken = default);
 }
+

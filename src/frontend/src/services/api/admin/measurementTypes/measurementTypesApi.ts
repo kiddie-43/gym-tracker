@@ -16,6 +16,14 @@ type AssignableMeasurementTypeApiRow = {
   description?: string | null;
 };
 
+type MeasurementTypesPageApiRow = {
+  items: IMeasurementType[];
+  total?: number;
+  totalCount?: number;
+  page: number;
+  pageSize: number;
+};
+
 function toAssignableMeasurementTypeDto(row: AssignableMeasurementTypeApiRow): IAssignableMeasurementType {
   return {
     id: row.id,
@@ -31,9 +39,14 @@ export function listMeasurementTypesPage(query: IMeasurementTypesFilter): Promis
       .filter(([, v]) => v !== undefined && v !== null && v !== '')
       .map(([k, v]) => [k, String(v)]),
   );
-  return apiFetch<IMeasurementTypes>(`/api/admin/measurement-types?${params.toString()}`, {
+  return apiFetch<MeasurementTypesPageApiRow>(`/api/admin/measurement-types?${params.toString()}`, {
     headers: adminAuthHeaders,
-  });
+  }).then((row) => ({
+    items: Array.isArray(row.items) ? row.items : [],
+    totalCount: typeof row.totalCount === 'number' ? row.totalCount : (typeof row.total === 'number' ? row.total : 0),
+    page: typeof row.page === 'number' ? row.page : 0,
+    pageSize: typeof row.pageSize === 'number' ? row.pageSize : 10,
+  }));
 }
 
 export function getMeasurementTypeById(id: string): Promise<IMeasurementType> {
@@ -81,7 +94,7 @@ export function importMeasurementTypesCsv(request: IImportMeasurementTypesReques
 }
 
 export function listAssignableMeasurementTypes(): Promise<IAssignableMeasurementType[]> {
-  return apiFetch<AssignableMeasurementTypeApiRow[]>('/api/admin/measurement-types/assignable', {
+  return apiFetch<AssignableMeasurementTypeApiRow[]>('/api/admin/measurement-types/search', {
     headers: adminAuthHeaders,
   }).then((rows) => rows.map(toAssignableMeasurementTypeDto));
 }

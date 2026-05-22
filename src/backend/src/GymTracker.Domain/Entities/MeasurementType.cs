@@ -2,9 +2,11 @@ namespace GymTracker.Domain.Entities;
 
 public sealed class MeasurementType : BaseEntity
 {
+    public string Code { get; private set; } = string.Empty;
+
     public string Name { get; private set; } = string.Empty;
 
-    public IReadOnlyCollection<string> Fields { get; private set; } = Array.Empty<string>();
+    public string? Description { get; private set; }
 
     public bool Active { get; private set; } = true;
 
@@ -12,22 +14,21 @@ public sealed class MeasurementType : BaseEntity
 
     public DateTimeOffset? DeletedAt { get; private set; }
 
-    public static MeasurementType Create(string name, IEnumerable<string> fields)
+    public static MeasurementType Create(string code, string name, string? description)
     {
-        var normalizedName = NormalizeName(name);
-        var normalizedFields = NormalizeFields(fields);
-
         return new MeasurementType
         {
-            Name = normalizedName,
-            Fields = normalizedFields,
+            Code = NormalizeCode(code),
+            Name = NormalizeName(name, code),
+            Description = NormalizeDescription(description),
         };
     }
 
-    public void Update(string name, IEnumerable<string> fields, bool active = true)
+    public void Update(string code, string name, string? description, bool active = true)
     {
-        Name = NormalizeName(name);
-        Fields = NormalizeFields(fields);
+        Code = NormalizeCode(code);
+        Name = NormalizeName(name, code);
+        Description = NormalizeDescription(description);
         Active = active;
         Touch();
     }
@@ -48,29 +49,25 @@ public sealed class MeasurementType : BaseEntity
         Touch();
     }
 
-    private static string NormalizeName(string value)
+    private static string NormalizeCode(string? value)
     {
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            throw new ArgumentException("Name is required.", nameof(value));
-        }
-
-        return value.Trim();
-    }
-
-    private static IReadOnlyCollection<string> NormalizeFields(IEnumerable<string> fields)
-    {
-        var normalized = fields
-            .Where(field => !string.IsNullOrWhiteSpace(field))
-            .Select(field => field.Trim())
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToArray();
-
-        if (normalized.Length == 0)
-        {
-            throw new ArgumentException("At least one field is required.", nameof(fields));
-        }
-
+        var normalized = (value ?? string.Empty).Trim().ToUpperInvariant().Replace(' ', '_');
+        if (string.IsNullOrWhiteSpace(normalized))
+            throw new ArgumentException("Code is required.", nameof(value));
         return normalized;
     }
+
+    private static string NormalizeName(string? name, string? code)
+    {
+        var trimmed = (name ?? string.Empty).Trim();
+        return string.IsNullOrWhiteSpace(trimmed)
+            ? (code ?? string.Empty).Trim().ToUpperInvariant()
+            : trimmed;
+    }
+
+    private static string? NormalizeDescription(string? value)
+    {
+        return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+    }
 }
+

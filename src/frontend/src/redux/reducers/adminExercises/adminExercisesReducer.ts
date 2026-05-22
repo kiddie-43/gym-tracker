@@ -60,7 +60,7 @@ export const adminExercisesReducer = createReducer(adminExercisesInitialState, (
       state.loading = false;
       state.table.list = action.payload.items;
       state.table.totalCount = action.payload.totalCount;
-      state.table.page = Math.max(0, action.payload.page - 1);
+      state.table.page = Math.max(0, action.payload.page);
       state.table.rowsPerPage = action.payload.pageSize;
     })
     .addCase(fetchAdminExercises.rejected, (state, action) => {

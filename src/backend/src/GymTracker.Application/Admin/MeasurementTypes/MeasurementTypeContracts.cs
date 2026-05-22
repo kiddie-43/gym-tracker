@@ -24,7 +24,7 @@ public sealed record AssignableMeasurementTypeResponse(
 
 public sealed record MeasurementTypesPageResponse(
     IReadOnlyCollection<MeasurementTypeResponse> Items,
-    int TotalCount,
+    int Total,
     int Page,
     int PageSize);
 

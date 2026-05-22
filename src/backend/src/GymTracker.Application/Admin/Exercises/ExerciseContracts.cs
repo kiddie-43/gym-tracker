@@ -1,104 +1,51 @@
-using GymTracker.Domain.ValueObjects;
-
 namespace GymTracker.Application.Admin.Exercises;
 
 public sealed record UpsertExerciseRequest(
     string Name,
-    string Code,
-    string? Description,
+    string? Code,
     string Category,
     string Difficulty,
-    IReadOnlyCollection<string> MeasurementTypeIds,
-    string MeasurementTypeCode,
     IReadOnlyCollection<string> PrimaryMuscleIds,
     IReadOnlyCollection<string> SecondaryMuscleIds,
-    IReadOnlyCollection<string> MuscleGroupIds,
-    bool Active = true)
-{
-    public string MeasurementTypeId => MeasurementTypeIds.FirstOrDefault() ?? string.Empty;
+    IReadOnlyCollection<string> MeasurementTypeIds,
+    bool Active = true);
 
-    public string ExerciseTypeId => Category;
+public sealed record ExerciseDto(
+    string Id,
+    string Name,
+    string? Code,
+    string Category,
+    string Difficulty,
+    IReadOnlyCollection<ExerciseMuscleDto> PrimaryMuscles,
+    IReadOnlyCollection<ExerciseMuscleDto> SecondaryMuscles,
+    IReadOnlyCollection<string> PrimaryMuscleIds,
+    IReadOnlyCollection<string> SecondaryMuscleIds,
+    IReadOnlyCollection<string> MeasurementTypeIds,
+    IReadOnlyCollection<string> MeasurementTypeNames,
+    bool Active,
+    bool IsDeleted,
+    DateTimeOffset? DeletedAt,
+    DateTimeOffset CreatedAt,
+    DateTimeOffset UpdatedAt);
 
-    public string ExerciseTypeCode => Difficulty;
-
-    public string FormTypeId => MeasurementTypeId;
-
-    public string FormTypeCode => MeasurementTypeCode;
-}
-
-public sealed record ExerciseResponse(
+public sealed record ExerciseMuscleDto(
     string Id,
     string Name,
     string Code,
     string? Description,
-    string Category,
-    string Difficulty,
-    IReadOnlyCollection<string> MeasurementTypeIds,
-    string MeasurementTypeCode,
-    IReadOnlyCollection<string> PrimaryMuscleIds,
-    IReadOnlyCollection<string> SecondaryMuscleIds,
     IReadOnlyCollection<string> MuscleGroupIds,
-    string? CoverStoragePath,
     bool Active,
-    bool IsDeleted,
-    IReadOnlyCollection<ExerciseMedia> Media,
-    DateTimeOffset CreatedAt,
-    DateTimeOffset UpdatedAt,
-    DateTimeOffset? DeletedAt)
-{
-    public string MeasurementTypeId => MeasurementTypeIds.FirstOrDefault() ?? string.Empty;
-
-    public string ExerciseTypeId => Category;
-
-    public string ExerciseTypeCode => Difficulty;
-
-    public string FormTypeId => MeasurementTypeId;
-
-    public string FormTypeCode => MeasurementTypeCode;
-}
+    bool IsDeleted);
 
 public sealed record ExercisesPageResponse(
-    IReadOnlyCollection<ExerciseResponse> Items,
-    int TotalCount,
+    IReadOnlyCollection<ExerciseDto> Items,
+    int Total,
     int Page,
     int PageSize);
 
-public sealed record WorkoutCatalogExerciseDto(
+public sealed record ExerciseSearchItem(
     string Id,
     string Name,
-    IReadOnlyCollection<string> MuscleGroupIds,
-    string? CoverStoragePath,
-    string MeasurementTypeId,
-    string MeasurementTypeCode)
-{
-    public string FormTypeId => MeasurementTypeId;
-
-    public string FormTypeCode => MeasurementTypeCode;
-}
-
-public sealed record ImportExerciseRowRequest(
     string? Code,
-    string? Name,
-    string? Description,
-    string? Category,
-    string? Difficulty,
-    string? MeasurementTypeId,
-    string? MeasurementTypeCode,
-    IReadOnlyCollection<string>? PrimaryMuscleIds,
-    IReadOnlyCollection<string>? SecondaryMuscleIds);
-
-public sealed record ImportExercisesRequest(
-    IReadOnlyCollection<ImportExerciseRowRequest>? Rows);
-
-public sealed record ImportExerciseRowResult(
-    int RowNumber,
-    string? Code,
-    bool Created,
-    string? Reason,
-    ExerciseResponse? Exercise);
-
-public sealed record ImportExercisesResult(
-    int TotalRows,
-    int CreatedRows,
-    int RejectedRows,
-    IReadOnlyCollection<ImportExerciseRowResult> Rows);
+    string Category,
+    IReadOnlyCollection<string> PrimaryMuscleIds);

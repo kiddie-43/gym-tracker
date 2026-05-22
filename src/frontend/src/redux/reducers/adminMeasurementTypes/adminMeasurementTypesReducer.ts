@@ -40,7 +40,7 @@ export const adminMeasurementTypesReducer = createReducer(adminMeasurementTypesI
       state.loading = false;
       state.table.list = action.payload.items;
       state.table.totalCount = action.payload.totalCount;
-      state.table.page = Math.max(0, action.payload.page - 1);
+      state.table.page = Math.max(0, action.payload.page);
       state.table.rowsPerPage = action.payload.pageSize;
     })
     .addCase(fetchAdminMeasurementTypes.rejected, (state, action) => {

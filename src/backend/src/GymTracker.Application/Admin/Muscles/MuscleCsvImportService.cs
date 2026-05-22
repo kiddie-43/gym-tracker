@@ -82,7 +82,6 @@ public sealed class MuscleCsvImportService
             entity.Active,
             entity.IsDeleted,
             entity.CreatedAt,
-            entity.UpdatedAt,
-            entity.DeletedAt);
+            entity.UpdatedAt);
     }
 }
