@@ -85,11 +85,9 @@ public sealed class ExerciseRelationsValidatorTests
     {
         return new AssignableMeasurementTypeResponse(
             Id: id,
-            Key: code,
+            Code: code,
             Name: "Strength Basic",
-            Unit: "reps",
-            DataType: "integer",
-            Category: "strength");
+            Description: null);
     }
 
     private sealed class StubMuscleRepository : IMuscleRepository
@@ -169,17 +167,10 @@ public sealed class ExerciseRelationsValidatorTests
 
             return Task.FromResult<MeasurementTypeResponse?>(new MeasurementTypeResponse(
                 row.Id,
-                row.Key,
+                row.Code,
                 row.Name,
-                row.Unit,
-                row.DataType,
-                row.Category,
-                Description: null,
-                Active: true,
-                IsDeleted: false,
-                CreatedAt: DateTimeOffset.UtcNow,
-                UpdatedAt: DateTimeOffset.UtcNow,
-                DeletedAt: null));
+                row.Description,
+                IsDeleted: false));
         }
 
         public Task<MeasurementTypeResponse> CreateAsync(UpsertMeasurementTypeRequest request, CancellationToken cancellationToken = default)

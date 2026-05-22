@@ -25,9 +25,9 @@ import type { IMeasurementType } from '../../../../interfaces/admin/measurementT
 type MeasurementTypesTableProps = {
   rows: IMeasurementType[];
   selectedIds: string[];
-  sortBy: 'name' | 'category' | 'key' | 'description';
+  sortBy: 'code' | 'name' | 'description';
   sortDirection: 'asc' | 'desc';
-  onSortChange: (field: 'name' | 'category' | 'key' | 'description') => void;
+  onSortChange: (field: 'code' | 'name' | 'description') => void;
   page: number;
   rowsPerPage: number;
   totalCount: number;
@@ -96,7 +96,7 @@ export function MeasurementTypesTable({
     <>
       <DataTable
         ariaLabel={t('administration.measurementTypes.table')}
-        columnWidths={['4%', '26%', '44%', '14%', '12%']}
+        columnWidths={['4%', '20%', '24%', '34%', '10%', '8%']}
         head={(
           <TableRow>
             <TableCell padding="checkbox">
@@ -106,6 +106,15 @@ export function MeasurementTypesTable({
                 onChange={(_event, checked) => toggleSelectAll(checked)}
                 inputProps={{ 'aria-label': t('administration.measurementTypes.selectAllRows') }}
               />
+            </TableCell>
+            <TableCell sortDirection={sortBy === 'code' ? sortDirection : false}>
+              <TableSortLabel
+                active={sortBy === 'code'}
+                direction={sortBy === 'code' ? sortDirection : 'asc'}
+                onClick={() => onSortChange('code')}
+              >
+                {t('common.fields.code')}
+              </TableSortLabel>
             </TableCell>
             <TableCell sortDirection={sortBy === 'name' ? sortDirection : false}>
               <TableSortLabel
@@ -141,6 +150,7 @@ export function MeasurementTypesTable({
                     inputProps={{ 'aria-label': t('administration.measurementTypes.selectRow', { code: row.code }) }}
                   />
                 </TableCell>
+                <TableCell>{row.code}</TableCell>
                 <TableCell>{row.name}</TableCell>
                 <TableCell>{row.description ?? '-'}</TableCell>
                 <TableCell>

@@ -46,7 +46,7 @@ export function MeasurementTypeFormDialog({
         />
         <TextField
           label={t('administration.measurementTypes.fields.name')}
-          value={formState.name}
+          value={formState.name ?? ''}
           onChange={(event) => onChange({ name: event.target.value })}
           fullWidth
         />

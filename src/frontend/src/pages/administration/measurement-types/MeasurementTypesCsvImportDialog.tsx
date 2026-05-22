@@ -42,15 +42,10 @@ function parseCsvRows(raw: string): IImportMeasurementTypeCsvRowRequest[] {
   const delimiter = normalizedHeader.includes(';') && !normalizedHeader.includes(',') ? ';' : ',';
   const columns = normalizedHeader.split(delimiter).map((item) => item.trim().toLowerCase());
 
-  const keyIndex = columns.indexOf('key');
+  const codeIndex = columns.indexOf('code');
+  const codigoIndex = columns.indexOf('codigo');
   const nameIndex = columns.indexOf('name');
   const nombreIndex = columns.indexOf('nombre');
-  const unitIndex = columns.indexOf('unit');
-  const unidadIndex = columns.indexOf('unidad');
-  const dataTypeIndex = columns.indexOf('datatype');
-  const tipoDatoIndex = columns.indexOf('tipodato');
-  const categoryIndex = columns.indexOf('category');
-  const categoriaIndex = columns.indexOf('categoria');
   const descriptionIndex = columns.indexOf('description');
   const descripcionIndex = columns.indexOf('descripcion');
 
@@ -58,13 +53,8 @@ function parseCsvRows(raw: string): IImportMeasurementTypeCsvRowRequest[] {
     const values = line.split(delimiter).map((item) => item.trim());
 
     return {
-      key: keyIndex >= 0 ? values[keyIndex] ?? '' : '',
+      code: codeIndex >= 0 ? values[codeIndex] ?? '' : codigoIndex >= 0 ? values[codigoIndex] ?? '' : '',
       name: nameIndex >= 0 ? values[nameIndex] ?? '' : nombreIndex >= 0 ? values[nombreIndex] ?? '' : '',
-      unit: unitIndex >= 0 ? values[unitIndex] ?? '' : unidadIndex >= 0 ? values[unidadIndex] ?? '' : '',
-      dataType:
-        dataTypeIndex >= 0 ? values[dataTypeIndex] ?? '' : tipoDatoIndex >= 0 ? values[tipoDatoIndex] ?? '' : '',
-      category:
-        categoryIndex >= 0 ? values[categoryIndex] ?? '' : categoriaIndex >= 0 ? values[categoriaIndex] ?? '' : '',
       description:
         descriptionIndex >= 0
           ? values[descriptionIndex] || null
@@ -169,9 +159,9 @@ export function MeasurementTypesCsvImportDialog({
               </TableHead>
               <TableBody>
                 {result.rows.map((row) => (
-                  <TableRow key={`${row.rowNumber}-${row.key ?? 'empty'}`}>
+                  <TableRow key={`${row.rowNumber}-${row.code ?? 'empty'}`}>
                     <TableCell>{row.rowNumber}</TableCell>
-                    <TableCell>{row.key ?? '-'}</TableCell>
+                    <TableCell>{row.code ?? '-'}</TableCell>
                     <TableCell>
                       {row.created
                         ? t('administration.measurementTypes.csv.status.created')

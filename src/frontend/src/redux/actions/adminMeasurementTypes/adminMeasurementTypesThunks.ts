@@ -55,12 +55,8 @@ export const submitAdminMeasurementTypeForm = createAsyncThunk<void, void, Admin
   async (_arg, { getState, rejectWithValue }) => {
     const { form } = getState().adminMeasurementTypes;
     const request: IMeasurementType = {
-      ...form,
+      code: form.code.trim(),
       name: form.name.trim(),
-      key: form.key.trim(),
-      unit: form.unit.trim(),
-      dataType: form.dataType.trim(),
-      category: form.category.trim(),
       description: form.description?.trim() || null,
     };
     try {

@@ -23,7 +23,7 @@ public sealed class MeasurementTypesController : ControllerBase
         [FromQuery] bool includeDeleted = false,
         [FromQuery] string? search = null,
         [FromQuery] string? code = null,
-        [FromQuery] string sortBy = "name",
+        [FromQuery] string sortBy = "code",
         [FromQuery] string sortDirection = "asc",
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 10,

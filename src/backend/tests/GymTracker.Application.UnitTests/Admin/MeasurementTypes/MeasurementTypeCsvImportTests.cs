@@ -14,9 +14,9 @@ public sealed class MeasurementTypeCsvImportTests
 
         var result = await service.ImportCsvAsync(new ImportMeasurementTypesRequest(new[]
         {
-            new ImportMeasurementTypeRowRequest("WEIGHT", "Peso", "kg", "decimal", "strength", "Carga principal"),
-            new ImportMeasurementTypeRowRequest("WEIGHT", "Peso duplicado", "kg", "decimal", "strength", "Duplicada"),
-            new ImportMeasurementTypeRowRequest("BAD_TYPE", "Tipo inválido", "kg", "float", "strength", "dataType inválido"),
+            new ImportMeasurementTypeRowRequest("WEIGHT", "Peso", "Carga principal"),
+            new ImportMeasurementTypeRowRequest("WEIGHT", "Peso duplicado", "Duplicada"),
+            new ImportMeasurementTypeRowRequest(null, "Sin código", null),
         }));
 
         result.TotalRows.Should().Be(3);
@@ -34,7 +34,7 @@ public sealed class MeasurementTypeCsvImportTests
             bool includeInactive = false,
             string? search = null,
             string? code = null,
-            string sortBy = "name",
+            string sortBy = "code",
             string sortDirection = "asc",
             int page = 1,
             int pageSize = 10,
@@ -55,7 +55,7 @@ public sealed class MeasurementTypeCsvImportTests
         {
             var rows = _store.Values
                 .Where(item => !item.IsDeleted)
-                .Select(item => new AssignableMeasurementTypeResponse(item.Id, item.Key, item.Name, item.Unit, item.DataType, item.Category))
+                .Select(item => new AssignableMeasurementTypeResponse(item.Id, item.Code, item.Name, item.Description))
                 .ToArray();
             return Task.FromResult<IReadOnlyCollection<AssignableMeasurementTypeResponse>>(rows);
         }
@@ -68,27 +68,26 @@ public sealed class MeasurementTypeCsvImportTests
 
         public Task<MeasurementTypeResponse> CreateAsync(UpsertMeasurementTypeRequest request, CancellationToken cancellationToken = default)
         {
-            var key = (request.Key ?? string.Empty).Trim().ToUpperInvariant();
-            var hasConflict = _store.Values.Any(item => !item.IsDeleted && string.Equals(item.Key, key, StringComparison.OrdinalIgnoreCase));
-            if (hasConflict)
+            var code = (request.Code ?? string.Empty).Trim().ToUpperInvariant().Replace(' ', '_');
+            if (string.IsNullOrWhiteSpace(code))
             {
-                throw new InvalidOperationException("Key already exists among active records.");
+                throw new ArgumentException("Code is required.", nameof(request.Code));
             }
 
-            var now = DateTimeOffset.UtcNow;
+            var hasConflict = _store.Values.Any(item => !item.IsDeleted && string.Equals(item.Code, code, StringComparison.OrdinalIgnoreCase));
+            if (hasConflict)
+            {
+                throw new InvalidOperationException("Code already exists among active records.");
+            }
+
+            var name = string.IsNullOrWhiteSpace(request.Name) ? code : request.Name.Trim();
+
             var row = new MeasurementTypeResponse(
                 Id: Guid.NewGuid().ToString("N"),
-                Key: key,
-                Name: request.Name ?? string.Empty,
-                Unit: request.Unit ?? string.Empty,
-                DataType: request.DataType ?? string.Empty,
-                Category: request.Category ?? string.Empty,
+                Code: code,
+                Name: name,
                 Description: request.Description,
-                Active: true,
-                IsDeleted: false,
-                CreatedAt: now,
-                UpdatedAt: now,
-                DeletedAt: null);
+                IsDeleted: false);
 
             _store[row.Id] = row;
             return Task.FromResult(row);

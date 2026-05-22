@@ -65,7 +65,7 @@ public sealed class ExerciseRelationsValidator : IExerciseRelationsValidator
 
         var assignable = await _measurementTypeRepository.ListAssignableAsync(cancellationToken);
         var activeMeasurementRefs = assignable
-            .SelectMany(item => new[] { item.Id, item.Key })
+            .SelectMany(item => new[] { item.Id, item.Code })
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         var unknownMeasurementRefs = measurementRefs

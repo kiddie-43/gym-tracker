@@ -11,26 +11,17 @@ import { adminAuthHeaders } from '../common/adminAuthHeaders';
 
 type AssignableMeasurementTypeApiRow = {
   id: string;
-  key: string;
+  code: string;
   name: string;
-  unit: string;
-  dataType: string;
-  category: string;
-  fields?: Array<{ name: string }>;
+  description?: string | null;
 };
 
 function toAssignableMeasurementTypeDto(row: AssignableMeasurementTypeApiRow): IAssignableMeasurementType {
-  const metrics = Array.isArray(row.fields)
-    ? row.fields.map((field) => field.name.trim()).filter((field) => field.length > 0)
-    : [];
   return {
     id: row.id,
-    key: row.key,
+    code: row.code,
     name: row.name,
-    unit: row.unit,
-    dataType: row.dataType,
-    category: row.category,
-    metrics: metrics.length > 0 ? metrics : [row.name],
+    description: row.description,
   };
 }
 

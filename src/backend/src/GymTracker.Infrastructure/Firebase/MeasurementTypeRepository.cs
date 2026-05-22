@@ -39,9 +39,8 @@ public sealed class MeasurementTypeRepository : IMeasurementTypeRepository
             var normalizedSearch = NormalizeForSearch(search);
             filtered = filtered
                 .Where(item =>
-                    NormalizeForSearch(item.Key).Contains(normalizedSearch) ||
+                    NormalizeForSearch(item.Code).Contains(normalizedSearch) ||
                     NormalizeForSearch(item.Name).Contains(normalizedSearch) ||
-                    NormalizeForSearch(item.Category).Contains(normalizedSearch) ||
                     NormalizeForSearch(item.Description ?? string.Empty).Contains(normalizedSearch))
                 .ToList();
         }
@@ -50,28 +49,22 @@ public sealed class MeasurementTypeRepository : IMeasurementTypeRepository
         {
             var normalizedCode = NormalizeForSearch(code);
             filtered = filtered
-                .Where(item => NormalizeForSearch(item.Key).Contains(normalizedCode))
+                .Where(item => NormalizeForSearch(item.Code).Contains(normalizedCode))
                 .ToList();
         }
 
         var comparer = StringComparer.OrdinalIgnoreCase;
         IOrderedEnumerable<MeasurementTypeResponse> ordered = sortBy.ToLowerInvariant() switch
         {
-            "category" => sortDirection.Equals("desc", StringComparison.OrdinalIgnoreCase)
-                ? filtered.OrderByDescending(item => item.Category, comparer).ThenBy(item => item.Id, comparer)
-                : filtered.OrderBy(item => item.Category, comparer).ThenBy(item => item.Id, comparer),
+            "name" => sortDirection.Equals("desc", StringComparison.OrdinalIgnoreCase)
+                ? filtered.OrderByDescending(item => item.Name, comparer).ThenBy(item => item.Id, comparer)
+                : filtered.OrderBy(item => item.Name, comparer).ThenBy(item => item.Id, comparer),
             "description" => sortDirection.Equals("desc", StringComparison.OrdinalIgnoreCase)
                 ? filtered.OrderByDescending(item => item.Description ?? string.Empty, comparer).ThenBy(item => item.Id, comparer)
                 : filtered.OrderBy(item => item.Description ?? string.Empty, comparer).ThenBy(item => item.Id, comparer),
-            "code" => sortDirection.Equals("desc", StringComparison.OrdinalIgnoreCase)
-                ? filtered.OrderByDescending(item => item.Key, comparer).ThenBy(item => item.Id, comparer)
-                : filtered.OrderBy(item => item.Key, comparer).ThenBy(item => item.Id, comparer),
-            "key" => sortDirection.Equals("desc", StringComparison.OrdinalIgnoreCase)
-                ? filtered.OrderByDescending(item => item.Key, comparer).ThenBy(item => item.Id, comparer)
-                : filtered.OrderBy(item => item.Key, comparer).ThenBy(item => item.Id, comparer),
             _ => sortDirection.Equals("desc", StringComparison.OrdinalIgnoreCase)
-                ? filtered.OrderByDescending(item => item.Name, comparer).ThenBy(item => item.Id, comparer)
-                : filtered.OrderBy(item => item.Name, comparer).ThenBy(item => item.Id, comparer),
+                ? filtered.OrderByDescending(item => item.Code, comparer).ThenBy(item => item.Id, comparer)
+                : filtered.OrderBy(item => item.Code, comparer).ThenBy(item => item.Id, comparer),
         };
 
         var totalCount = filtered.Count;
@@ -90,15 +83,13 @@ public sealed class MeasurementTypeRepository : IMeasurementTypeRepository
         return rows
             .Select(Map)
             .Where(item => !item.IsDeleted)
-            .OrderBy(item => item.Name, StringComparer.OrdinalIgnoreCase)
+            .OrderBy(item => item.Code, StringComparer.OrdinalIgnoreCase)
             .ThenBy(item => item.Id, StringComparer.OrdinalIgnoreCase)
             .Select(item => new AssignableMeasurementTypeResponse(
                 item.Id,
-                item.Key,
+                item.Code,
                 item.Name,
-                item.Unit,
-                item.DataType,
-                item.Category))
+                item.Description))
             .ToArray();
     }
 
@@ -117,29 +108,27 @@ public sealed class MeasurementTypeRepository : IMeasurementTypeRepository
 
     public async Task<MeasurementTypeResponse> CreateAsync(UpsertMeasurementTypeRequest request, CancellationToken cancellationToken = default)
     {
-        var normalized = SanitizeRequest(request);
-        var key = normalized.Key!;
-        var name = normalized.Name!;
-        var unit = normalized.Unit!;
-        var dataType = normalized.DataType!;
-        var category = normalized.Category!;
+        var normalizedCode = AdminRequestSanitizer.RequiredUpperCode(request.Code, nameof(request.Code));
+        var name = string.IsNullOrWhiteSpace(request.Name)
+            ? normalizedCode
+            : AdminRequestSanitizer.RequiredTrimmed(request.Name, nameof(request.Name));
 
-        var hasConflict = await HasActiveKeyConflictAsync(key, excludingId: null, cancellationToken);
+        var hasConflict = await HasActiveKeyConflictAsync(normalizedCode, excludingId: null, cancellationToken);
         if (hasConflict)
         {
-            throw new InvalidOperationException("Key already exists among active records.");
+            throw new InvalidOperationException("Code already exists among active records.");
         }
 
         var now = DateTimeOffset.UtcNow;
         var row = new MeasurementTypeDocument(
             Id: Guid.NewGuid().ToString("N"),
-            Key: key,
+            Key: normalizedCode,
             Name: name,
-            Unit: unit,
-            DataType: dataType,
-            Category: category,
-            Description: normalized.Description,
-            Active: normalized.Active,
+            Unit: "count",
+            DataType: "integer",
+            Category: "general",
+            Description: AdminRequestSanitizer.OptionalTrimmed(request.Description),
+            Active: true,
             IsDeleted: false,
             CreatedAt: now,
             UpdatedAt: now,
@@ -158,28 +147,22 @@ public sealed class MeasurementTypeRepository : IMeasurementTypeRepository
             return null;
         }
 
-        var normalized = SanitizeRequest(request);
-        var normalizedKey = normalized.Key!;
-        var name = normalized.Name!;
-        var unit = normalized.Unit!;
-        var dataType = normalized.DataType!;
-        var category = normalized.Category!;
+        var normalizedCode = AdminRequestSanitizer.RequiredUpperCode(request.Code, nameof(request.Code));
+        var name = string.IsNullOrWhiteSpace(request.Name)
+            ? normalizedCode
+            : AdminRequestSanitizer.RequiredTrimmed(request.Name, nameof(request.Name));
 
-        var hasConflict = await HasActiveKeyConflictAsync(normalizedKey, excludingId: row.Id, cancellationToken);
+        var hasConflict = await HasActiveKeyConflictAsync(normalizedCode, excludingId: row.Id, cancellationToken);
         if (hasConflict)
         {
-            throw new InvalidOperationException("Key already exists among active records.");
+            throw new InvalidOperationException("Code already exists among active records.");
         }
 
         var updated = row with
         {
-            Key = normalizedKey,
+            Key = normalizedCode,
             Name = name,
-            Unit = unit,
-            DataType = dataType,
-            Category = category,
-            Description = normalized.Description,
-            Active = normalized.Active,
+            Description = AdminRequestSanitizer.OptionalTrimmed(request.Description),
             UpdatedAt = DateTimeOffset.UtcNow,
         };
 
@@ -254,67 +237,6 @@ public sealed class MeasurementTypeRepository : IMeasurementTypeRepository
             && !string.Equals(item.Id, excludingId, StringComparison.OrdinalIgnoreCase));
     }
 
-    private static UpsertMeasurementTypeRequest SanitizeRequest(UpsertMeasurementTypeRequest request)
-    {
-        var normalizedName = AdminRequestSanitizer.RequiredTrimmed(request.Name, nameof(request.Name));
-        var inferred = InferDefaults(normalizedName);
-        var normalizedKey = string.IsNullOrWhiteSpace(request.Key)
-            ? inferred.Key
-            : AdminRequestSanitizer.RequiredUpperCode(request.Key, nameof(request.Key));
-
-        var legacyHasFields = request.Fields is { Count: > 0 };
-        var normalizedUnit = string.IsNullOrWhiteSpace(request.Unit)
-            ? (legacyHasFields ? "count" : inferred.Unit)
-            : AdminRequestSanitizer.RequiredTrimmed(request.Unit, nameof(request.Unit));
-
-        var normalizedDataType = string.IsNullOrWhiteSpace(request.DataType)
-            ? (legacyHasFields ? "integer" : inferred.DataType)
-            : AdminRequestSanitizer.RequiredTrimmed(request.DataType, nameof(request.DataType)).ToLowerInvariant();
-
-        var normalizedCategory = string.IsNullOrWhiteSpace(request.Category)
-            ? (legacyHasFields ? "general" : inferred.Category)
-            : AdminRequestSanitizer.RequiredTrimmed(request.Category, nameof(request.Category)).ToLowerInvariant();
-
-        return request with
-        {
-            Key = normalizedKey,
-            Name = normalizedName,
-            Unit = normalizedUnit,
-            DataType = normalizedDataType,
-            Category = normalizedCategory,
-            Description = AdminRequestSanitizer.OptionalTrimmed(request.Description),
-        };
-    }
-
-    private static string NormalizeCode(string value)
-    {
-        var upper = value.Trim().ToUpperInvariant();
-        var normalized = upper.Replace(' ', '_');
-        return string.IsNullOrWhiteSpace(normalized) ? "MEASUREMENT_TYPE" : normalized;
-    }
-
-    private static (string Key, string Unit, string DataType, string Category) InferDefaults(string normalizedName)
-    {
-        var lower = normalizedName.ToLowerInvariant();
-
-        if (lower.Contains("kilo") || lower.Contains("peso") || lower.Contains("kg"))
-        {
-            return ("PESO", "kg", "decimal", "strength");
-        }
-
-        if (lower.Contains("rep"))
-        {
-            return ("REPETICIONES", "reps", "integer", "strength");
-        }
-
-        if (lower.Contains("dist") || lower.Contains("metro") || lower.Contains("km"))
-        {
-            return ("DISTANCIA", "km", "decimal", "cardio");
-        }
-
-        return (NormalizeCode(normalizedName), "count", "integer", "general");
-    }
-
     private static string NormalizeForSearch(string text)
     {
         if (string.IsNullOrWhiteSpace(text))
@@ -342,15 +264,8 @@ public sealed class MeasurementTypeRepository : IMeasurementTypeRepository
             row.Id,
             row.Key,
             row.Name,
-            row.Unit,
-            row.DataType,
-            row.Category,
             row.Description,
-            row.Active,
-            row.IsDeleted,
-            row.CreatedAt,
-            row.UpdatedAt,
-            row.DeletedAt);
+            row.IsDeleted);
     }
 
     private sealed record MeasurementTypeDocument(

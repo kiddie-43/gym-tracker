@@ -9,61 +9,38 @@ public sealed class MeasurementTypeValidationTests
     private readonly MeasurementTypeService _service = new(new FakeMeasurementTypeRepository());
 
     [Theory]
-    [InlineData("float")]
-    [InlineData("number")]
-    [InlineData("duration")]
-    public async Task CreateAsync_ShouldThrowArgumentException_WhenDataTypeIsInvalid(string dataType)
+    [InlineData("")]
+    [InlineData(" ")]
+    [InlineData(null)]
+    public async Task CreateAsync_ShouldThrowArgumentException_WhenCodeIsEmpty(string? code)
     {
-        var request = CreateValidRequest() with { DataType = dataType };
+        var request = new UpsertMeasurementTypeRequest { Code = code, Name = "Test" };
 
         var action = () => _service.CreateAsync(request, CancellationToken.None);
 
-        await action.Should().ThrowAsync<ArgumentException>()
-            .WithMessage("*DataType is invalid*");
+        await action.Should().ThrowAsync<ArgumentException>();
     }
 
-    [Theory]
-    [InlineData("power")]
-    [InlineData("hypertrophy")]
-    [InlineData("balance")]
-    public async Task CreateAsync_ShouldThrowArgumentException_WhenCategoryIsInvalid(string category)
+    [Fact]
+    public async Task CreateAsync_ShouldDefaultNameToCode_WhenNameIsEmpty()
     {
-        var request = CreateValidRequest() with { Category = category };
-
-        var action = () => _service.CreateAsync(request, CancellationToken.None);
-
-        await action.Should().ThrowAsync<ArgumentException>()
-            .WithMessage("*Category is invalid*");
-    }
-
-    [Theory]
-    [InlineData("integer", "strength")]
-    [InlineData("decimal", "cardio")]
-    [InlineData("time", "mobility")]
-    [InlineData("boolean", "general")]
-    [InlineData("text", "general")]
-    public async Task CreateAsync_ShouldAcceptAllowedDataTypeAndCategory(string dataType, string category)
-    {
-        var request = CreateValidRequest() with { DataType = dataType, Category = category };
+        var request = new UpsertMeasurementTypeRequest { Code = "WEIGHT", Name = null };
 
         var response = await _service.CreateAsync(request, CancellationToken.None);
 
-        response.DataType.Should().Be(dataType);
-        response.Category.Should().Be(category);
+        response.Name.Should().Be("WEIGHT");
     }
 
-    private static UpsertMeasurementTypeRequest CreateValidRequest()
+    [Fact]
+    public async Task CreateAsync_ShouldUseProvidedName_WhenNameIsSet()
     {
-        return new UpsertMeasurementTypeRequest
-        {
-            Key = "WEIGHT",
-            Name = "Peso",
-            Unit = "kg",
-            DataType = "decimal",
-            Category = "strength",
-            Description = "Carga",
-            Active = true,
-        };
+        var request = new UpsertMeasurementTypeRequest { Code = "WEIGHT", Name = "Peso", Description = "Carga" };
+
+        var response = await _service.CreateAsync(request, CancellationToken.None);
+
+        response.Code.Should().Be("WEIGHT");
+        response.Name.Should().Be("Peso");
+        response.Description.Should().Be("Carga");
     }
 
     private sealed class FakeMeasurementTypeRepository : IMeasurementTypeRepository
@@ -72,7 +49,7 @@ public sealed class MeasurementTypeValidationTests
             bool includeInactive = false,
             string? search = null,
             string? code = null,
-            string sortBy = "name",
+            string sortBy = "code",
             string sortDirection = "asc",
             int page = 1,
             int pageSize = 10,
@@ -87,19 +64,20 @@ public sealed class MeasurementTypeValidationTests
 
         public Task<MeasurementTypeResponse> CreateAsync(UpsertMeasurementTypeRequest request, CancellationToken cancellationToken = default)
         {
+            var code = (request.Code ?? string.Empty).Trim().ToUpperInvariant().Replace(' ', '_');
+            if (string.IsNullOrWhiteSpace(code))
+            {
+                throw new ArgumentException("Code is required.", nameof(request.Code));
+            }
+
+            var name = string.IsNullOrWhiteSpace(request.Name) ? code : request.Name.Trim();
+
             return Task.FromResult(new MeasurementTypeResponse(
                 Id: Guid.NewGuid().ToString("N"),
-                Key: request.Key ?? string.Empty,
-                Name: request.Name ?? string.Empty,
-                Unit: request.Unit ?? string.Empty,
-                DataType: request.DataType ?? string.Empty,
-                Category: request.Category ?? string.Empty,
+                Code: code,
+                Name: name,
                 Description: request.Description,
-                Active: request.Active,
-                IsDeleted: false,
-                CreatedAt: DateTimeOffset.UtcNow,
-                UpdatedAt: DateTimeOffset.UtcNow,
-                DeletedAt: null));
+                IsDeleted: false));
         }
 
         public Task<MeasurementTypeResponse?> UpdateAsync(string id, UpsertMeasurementTypeRequest request, CancellationToken cancellationToken = default)

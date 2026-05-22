@@ -26,11 +26,8 @@ public sealed class MeasurementTypesCrudTests : IClassFixture<WebApplicationFact
 
         var createRequest = new
         {
-            key = $"WEIGHT_{suffix}",
+            code = $"WEIGHT_{suffix}",
             name = $"Peso {suffix}",
-            unit = "kg",
-            dataType = "decimal",
-            category = "strength",
             description = "Carga principal",
         };
 
@@ -44,11 +41,8 @@ public sealed class MeasurementTypesCrudTests : IClassFixture<WebApplicationFact
 
         var updateRequest = new
         {
-            key = createRequest.key,
+            code = createRequest.code,
             name = $"Peso actualizado {suffix}",
-            unit = "kg",
-            dataType = "decimal",
-            category = "strength",
             description = "Carga secundaria",
         };
 

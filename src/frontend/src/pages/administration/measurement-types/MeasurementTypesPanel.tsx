@@ -71,7 +71,7 @@ export function MeasurementTypesPanel({ supportsImport }: { supportsImport: bool
     }
   }, [rows]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const handleSortChange = (field: 'name' | 'category' | 'key' | 'description') => {
+  const handleSortChange = (field: 'code' | 'name' | 'description') => {
     const newDirection = table.sortBy === field && table.sortDirection === 'asc' ? 'desc' : 'asc';
     dispatch(setAdminMeasurementTypesTable({ ...table, sortBy: field, sortDirection: newDirection, page: 0 }));
     void dispatch(fetchAdminMeasurementTypes());

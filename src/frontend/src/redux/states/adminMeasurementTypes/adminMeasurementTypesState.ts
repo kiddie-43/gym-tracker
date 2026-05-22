@@ -12,7 +12,7 @@ export type AdminMeasurementTypesTable = {
   page: number;
   rowsPerPage: number;
   totalCount: number;
-  sortBy: 'name' | 'category' | 'key' | 'description';
+  sortBy: 'code' | 'name' | 'description';
   sortDirection: 'asc' | 'desc';
   selectedIds: string[];
 };
@@ -33,7 +33,7 @@ export const adminMeasurementTypesInitialState: AdminMeasurementTypesState = {
     page: 0,
     rowsPerPage: 10,
     totalCount: 0,
-    sortBy: 'name',
+    sortBy: 'code',
     sortDirection: 'asc',
     selectedIds: [],
   },
@@ -42,13 +42,7 @@ export const adminMeasurementTypesInitialState: AdminMeasurementTypesState = {
     id: undefined,
     code: '',
     name: '',
-    unit: '',
-    dataType: 'integer',
-    category: 'general',
     description: null,
-    active: true,
-    isDeleted: false,
-    deletedAt: null,
   },
   csvResult: null,
   error: null,

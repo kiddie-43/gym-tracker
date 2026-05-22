@@ -31,15 +31,11 @@ public sealed class SqlMeasurementTypeRepository : IMeasurementTypeRepository
     {
         await EnsureSchemaAsync(cancellationToken);
 
-        var normalizedSortBy = sortBy.Equals("category", StringComparison.OrdinalIgnoreCase)
-            ? "Category"
+        var normalizedSortBy = sortBy.Equals("name", StringComparison.OrdinalIgnoreCase)
+            ? "[Name]"
             : sortBy.Equals("description", StringComparison.OrdinalIgnoreCase)
                 ? "Description"
-                : sortBy.Equals("code", StringComparison.OrdinalIgnoreCase)
-                    ? "[Key]"
-            : sortBy.Equals("key", StringComparison.OrdinalIgnoreCase)
-                ? "[Key]"
-                : "[Name]";
+                : "[Key]";
         var normalizedSortDirection = sortDirection.Equals("desc", StringComparison.OrdinalIgnoreCase) ? "DESC" : "ASC";
         var normalizedPage = page < 1 ? 1 : page;
         var normalizedPageSize = pageSize < 1 ? 10 : pageSize;
@@ -51,17 +47,15 @@ public sealed class SqlMeasurementTypeRepository : IMeasurementTypeRepository
               AND (@search IS NULL
                    OR [Name] LIKE '%' + @search + '%'
                    OR [Key] LIKE '%' + @search + '%'
-                   OR Category LIKE '%' + @search + '%'
                    OR Description LIKE '%' + @search + '%')
               AND (@code IS NULL OR [Key] LIKE '%' + @code + '%');
 
-            SELECT Id, [Key], [Name], Unit, DataType, Category, Description, Active, IsDeleted, CreatedAt, UpdatedAt, DeletedAt
+            SELECT Id, [Key], [Name], Description, IsDeleted
             FROM MeasurementTypes
             WHERE (@includeInactive = 1 OR IsDeleted = 0)
               AND (@search IS NULL
                    OR [Name] LIKE '%' + @search + '%'
                    OR [Key] LIKE '%' + @search + '%'
-                   OR Category LIKE '%' + @search + '%'
                    OR Description LIKE '%' + @search + '%')
               AND (@code IS NULL OR [Key] LIKE '%' + @code + '%')
             ORDER BY {normalizedSortBy} {normalizedSortDirection}, Id {normalizedSortDirection}
@@ -103,10 +97,10 @@ public sealed class SqlMeasurementTypeRepository : IMeasurementTypeRepository
         await EnsureSchemaAsync(cancellationToken);
 
         const string sql = """
-            SELECT Id, [Key], [Name], Unit, DataType, Category
+            SELECT Id, [Key], [Name], Description
             FROM MeasurementTypes
             WHERE IsDeleted = 0
-            ORDER BY [Name], Id;
+            ORDER BY [Key], Id;
             """;
 
         await using var connection = new SqlConnection(_connectionString);
@@ -123,9 +117,7 @@ public sealed class SqlMeasurementTypeRepository : IMeasurementTypeRepository
                 reader.GetString(0),
                 reader.GetString(1),
                 reader.GetString(2),
-                reader.GetString(3),
-                reader.GetString(4),
-                reader.GetString(5)));
+                reader.IsDBNull(3) ? null : reader.GetString(3)));
         }
 
         return results;
@@ -136,7 +128,7 @@ public sealed class SqlMeasurementTypeRepository : IMeasurementTypeRepository
         await EnsureSchemaAsync(cancellationToken);
 
         const string sql = """
-            SELECT Id, [Key], [Name], Unit, DataType, Category, Description, Active, IsDeleted, CreatedAt, UpdatedAt, DeletedAt
+            SELECT Id, [Key], [Name], Description, IsDeleted
             FROM MeasurementTypes
             WHERE Id = @id AND IsDeleted = 0;
             """;
@@ -155,42 +147,37 @@ public sealed class SqlMeasurementTypeRepository : IMeasurementTypeRepository
     {
         await EnsureSchemaAsync(cancellationToken);
 
-        var normalized = SanitizeRequest(request);
+        var code = RequiredUpperCode(request.Code, nameof(request.Code));
+        var name = string.IsNullOrWhiteSpace(request.Name) ? code : request.Name.Trim();
+        var description = OptionalTrimmed(request.Description);
 
         await using var connection = new SqlConnection(_connectionString);
         await connection.OpenAsync(cancellationToken);
 
-        var hasConflict = await HasActiveKeyConflictAsync(connection, normalized.Key!, excludingId: null, cancellationToken);
+        var hasConflict = await HasActiveKeyConflictAsync(connection, code, excludingId: null, cancellationToken);
         if (hasConflict)
         {
-            throw new InvalidOperationException("Key already exists among active records.");
+            throw new InvalidOperationException("Code already exists among active records.");
         }
 
         var now = DateTimeOffset.UtcNow;
-        var row = new MeasurementTypeResponse(
-            Id: Guid.NewGuid().ToString("N"),
-            Key: normalized.Key!,
-            Name: normalized.Name!,
-            Unit: normalized.Unit!,
-            DataType: normalized.DataType!,
-            Category: normalized.Category!,
-            Description: normalized.Description,
-            Active: normalized.Active,
-            IsDeleted: false,
-            CreatedAt: now,
-            UpdatedAt: now,
-            DeletedAt: null);
+        var id = Guid.NewGuid().ToString("N");
 
         const string insertSql = """
             INSERT INTO MeasurementTypes (Id, [Key], [Name], Unit, DataType, Category, Description, Active, IsDeleted, CreatedAt, UpdatedAt, DeletedAt)
-            VALUES (@Id, @Key, @Name, @Unit, @DataType, @Category, @Description, @Active, @IsDeleted, @CreatedAt, @UpdatedAt, @DeletedAt);
+            VALUES (@Id, @Key, @Name, 'count', 'integer', 'general', @Description, 1, 0, @CreatedAt, @UpdatedAt, NULL);
             """;
 
         await using var command = new SqlCommand(insertSql, connection);
-        AddRowParameters(command, row);
+        command.Parameters.AddWithValue("@Id", id);
+        command.Parameters.AddWithValue("@Key", code);
+        command.Parameters.AddWithValue("@Name", name);
+        command.Parameters.AddWithValue("@Description", (object?)description ?? DBNull.Value);
+        command.Parameters.AddWithValue("@CreatedAt", now);
+        command.Parameters.AddWithValue("@UpdatedAt", now);
         await command.ExecuteNonQueryAsync(cancellationToken);
 
-        return row;
+        return new MeasurementTypeResponse(id, code, name, description, false);
     }
 
     public async Task<MeasurementTypeResponse?> UpdateAsync(string id, UpsertMeasurementTypeRequest request, CancellationToken cancellationToken = default)
@@ -206,47 +193,34 @@ public sealed class SqlMeasurementTypeRepository : IMeasurementTypeRepository
             return null;
         }
 
-        var normalized = SanitizeRequest(request);
+        var code = RequiredUpperCode(request.Code, nameof(request.Code));
+        var name = string.IsNullOrWhiteSpace(request.Name) ? code : request.Name.Trim();
+        var description = OptionalTrimmed(request.Description);
 
-        var hasConflict = await HasActiveKeyConflictAsync(connection, normalized.Key!, id, cancellationToken);
+        var hasConflict = await HasActiveKeyConflictAsync(connection, code, id, cancellationToken);
         if (hasConflict)
         {
-            throw new InvalidOperationException("Key already exists among active records.");
+            throw new InvalidOperationException("Code already exists among active records.");
         }
-
-        var updated = existing with
-        {
-            Key = normalized.Key!,
-            Name = normalized.Name!,
-            Unit = normalized.Unit!,
-            DataType = normalized.DataType!,
-            Category = normalized.Category!,
-            Description = normalized.Description,
-            Active = normalized.Active,
-            UpdatedAt = DateTimeOffset.UtcNow,
-        };
 
         const string updateSql = """
             UPDATE MeasurementTypes
             SET [Key] = @Key,
                 [Name] = @Name,
-                Unit = @Unit,
-                DataType = @DataType,
-                Category = @Category,
                 Description = @Description,
-                Active = @Active,
-                IsDeleted = @IsDeleted,
-                CreatedAt = @CreatedAt,
-                UpdatedAt = @UpdatedAt,
-                DeletedAt = @DeletedAt
+                UpdatedAt = @UpdatedAt
             WHERE Id = @Id;
             """;
 
         await using var command = new SqlCommand(updateSql, connection);
-        AddRowParameters(command, updated);
+        command.Parameters.AddWithValue("@Id", id);
+        command.Parameters.AddWithValue("@Key", code);
+        command.Parameters.AddWithValue("@Name", name);
+        command.Parameters.AddWithValue("@Description", (object?)description ?? DBNull.Value);
+        command.Parameters.AddWithValue("@UpdatedAt", DateTimeOffset.UtcNow);
         await command.ExecuteNonQueryAsync(cancellationToken);
 
-        return updated;
+        return new MeasurementTypeResponse(id, code, name, description, existing.IsDeleted);
     }
 
     public async Task<bool> DeleteAsync(string id, CancellationToken cancellationToken = default)
@@ -262,18 +236,12 @@ public sealed class SqlMeasurementTypeRepository : IMeasurementTypeRepository
             return false;
         }
 
-        var updated = existing with
-        {
-            Active = false,
-            IsDeleted = true,
-            UpdatedAt = DateTimeOffset.UtcNow,
-            DeletedAt = DateTimeOffset.UtcNow,
-        };
+        var updated = existing with { IsDeleted = true };
 
         const string sql = """
             UPDATE MeasurementTypes
-            SET Active = @Active,
-                IsDeleted = @IsDeleted,
+            SET Active = 0,
+                IsDeleted = 1,
                 UpdatedAt = @UpdatedAt,
                 DeletedAt = @DeletedAt
             WHERE Id = @Id;
@@ -281,10 +249,8 @@ public sealed class SqlMeasurementTypeRepository : IMeasurementTypeRepository
 
         await using var command = new SqlCommand(sql, connection);
         command.Parameters.AddWithValue("@Id", id);
-        command.Parameters.AddWithValue("@Active", updated.Active);
-        command.Parameters.AddWithValue("@IsDeleted", updated.IsDeleted);
-        command.Parameters.AddWithValue("@UpdatedAt", updated.UpdatedAt);
-        command.Parameters.AddWithValue("@DeletedAt", (object?)updated.DeletedAt ?? DBNull.Value);
+        command.Parameters.AddWithValue("@UpdatedAt", DateTimeOffset.UtcNow);
+        command.Parameters.AddWithValue("@DeletedAt", DateTimeOffset.UtcNow);
 
         await command.ExecuteNonQueryAsync(cancellationToken);
         return true;
@@ -303,35 +269,26 @@ public sealed class SqlMeasurementTypeRepository : IMeasurementTypeRepository
             return null;
         }
 
-        var hasConflict = await HasActiveKeyConflictAsync(connection, existing.Key, id, cancellationToken);
+        var hasConflict = await HasActiveKeyConflictAsync(connection, existing.Code, id, cancellationToken);
         if (hasConflict)
         {
             throw new InvalidOperationException("Key already exists among active records.");
         }
 
-        var updated = existing with
-        {
-            Active = true,
-            IsDeleted = false,
-            UpdatedAt = DateTimeOffset.UtcNow,
-            DeletedAt = null,
-        };
+        var updated = existing with { IsDeleted = false };
 
         const string sql = """
             UPDATE MeasurementTypes
-            SET Active = @Active,
-                IsDeleted = @IsDeleted,
+            SET Active = 1,
+                IsDeleted = 0,
                 UpdatedAt = @UpdatedAt,
-                DeletedAt = @DeletedAt
+                DeletedAt = NULL
             WHERE Id = @Id;
             """;
 
         await using var command = new SqlCommand(sql, connection);
         command.Parameters.AddWithValue("@Id", id);
-        command.Parameters.AddWithValue("@Active", updated.Active);
-        command.Parameters.AddWithValue("@IsDeleted", updated.IsDeleted);
-        command.Parameters.AddWithValue("@UpdatedAt", updated.UpdatedAt);
-        command.Parameters.AddWithValue("@DeletedAt", DBNull.Value);
+        command.Parameters.AddWithValue("@UpdatedAt", DateTimeOffset.UtcNow);
 
         await command.ExecuteNonQueryAsync(cancellationToken);
         return updated;
@@ -340,7 +297,7 @@ public sealed class SqlMeasurementTypeRepository : IMeasurementTypeRepository
     private async Task<MeasurementTypeResponse?> GetByIdInternalAsync(SqlConnection connection, string id, CancellationToken cancellationToken, bool includeDeleted = false)
     {
         const string sql = """
-            SELECT Id, [Key], [Name], Unit, DataType, Category, Description, Active, IsDeleted, CreatedAt, UpdatedAt, DeletedAt
+            SELECT Id, [Key], [Name], Description, IsDeleted
             FROM MeasurementTypes
             WHERE Id = @id AND (@includeDeleted = 1 OR IsDeleted = 0);
             """;
@@ -438,63 +395,8 @@ public sealed class SqlMeasurementTypeRepository : IMeasurementTypeRepository
             reader.GetString(0),
             reader.GetString(1),
             reader.GetString(2),
-            reader.GetString(3),
-            reader.GetString(4),
-            reader.GetString(5),
-            reader.IsDBNull(6) ? null : reader.GetString(6),
-            reader.GetBoolean(7),
-            reader.GetBoolean(8),
-            reader.GetDateTimeOffset(9),
-            reader.GetDateTimeOffset(10),
-            reader.IsDBNull(11) ? null : reader.GetDateTimeOffset(11));
-    }
-
-    private static void AddRowParameters(SqlCommand command, MeasurementTypeResponse row)
-    {
-        command.Parameters.AddWithValue("@Id", row.Id);
-        command.Parameters.AddWithValue("@Key", row.Key);
-        command.Parameters.AddWithValue("@Name", row.Name);
-        command.Parameters.AddWithValue("@Unit", row.Unit);
-        command.Parameters.AddWithValue("@DataType", row.DataType);
-        command.Parameters.AddWithValue("@Category", row.Category);
-        command.Parameters.AddWithValue("@Description", (object?)row.Description ?? DBNull.Value);
-        command.Parameters.AddWithValue("@Active", row.Active);
-        command.Parameters.AddWithValue("@IsDeleted", row.IsDeleted);
-        command.Parameters.AddWithValue("@CreatedAt", row.CreatedAt);
-        command.Parameters.AddWithValue("@UpdatedAt", row.UpdatedAt);
-        command.Parameters.AddWithValue("@DeletedAt", (object?)row.DeletedAt ?? DBNull.Value);
-    }
-
-    private static UpsertMeasurementTypeRequest SanitizeRequest(UpsertMeasurementTypeRequest request)
-    {
-        var normalizedName = RequiredTrimmed(request.Name, nameof(request.Name));
-        var inferred = InferDefaults(normalizedName);
-        var normalizedKey = string.IsNullOrWhiteSpace(request.Key)
-            ? inferred.Key
-            : RequiredUpperCode(request.Key, nameof(request.Key));
-
-        var legacyHasFields = request.Fields is { Count: > 0 };
-        var normalizedUnit = string.IsNullOrWhiteSpace(request.Unit)
-            ? (legacyHasFields ? "count" : inferred.Unit)
-            : RequiredTrimmed(request.Unit, nameof(request.Unit));
-
-        var normalizedDataType = string.IsNullOrWhiteSpace(request.DataType)
-            ? (legacyHasFields ? "integer" : inferred.DataType)
-            : RequiredTrimmed(request.DataType, nameof(request.DataType)).ToLowerInvariant();
-
-        var normalizedCategory = string.IsNullOrWhiteSpace(request.Category)
-            ? (legacyHasFields ? "general" : inferred.Category)
-            : RequiredTrimmed(request.Category, nameof(request.Category)).ToLowerInvariant();
-
-        return request with
-        {
-            Key = normalizedKey,
-            Name = normalizedName,
-            Unit = normalizedUnit,
-            DataType = normalizedDataType,
-            Category = normalizedCategory,
-            Description = OptionalTrimmed(request.Description),
-        };
+            reader.IsDBNull(3) ? null : reader.GetString(3),
+            reader.GetBoolean(4));
     }
 
     private static string RequiredTrimmed(string? value, string paramName)
@@ -516,34 +418,5 @@ public sealed class SqlMeasurementTypeRepository : IMeasurementTypeRepository
     private static string? OptionalTrimmed(string? value)
     {
         return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
-    }
-
-    private static string NormalizeCode(string value)
-    {
-        var upper = value.Trim().ToUpperInvariant();
-        var normalized = upper.Replace(' ', '_');
-        return string.IsNullOrWhiteSpace(normalized) ? "MEASUREMENT_TYPE" : normalized;
-    }
-
-    private static (string Key, string Unit, string DataType, string Category) InferDefaults(string normalizedName)
-    {
-        var lower = normalizedName.ToLowerInvariant();
-
-        if (lower.Contains("kilo") || lower.Contains("peso") || lower.Contains("kg"))
-        {
-            return ("PESO", "kg", "decimal", "strength");
-        }
-
-        if (lower.Contains("rep"))
-        {
-            return ("REPETICIONES", "reps", "integer", "strength");
-        }
-
-        if (lower.Contains("dist") || lower.Contains("metro") || lower.Contains("km"))
-        {
-            return ("DISTANCIA", "km", "decimal", "cardio");
-        }
-
-        return (NormalizeCode(normalizedName), "count", "integer", "general");
     }
 }

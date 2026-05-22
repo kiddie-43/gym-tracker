@@ -1,21 +1,16 @@
 export interface IMeasurementType {
   id?: string;
-  code?: string;
+  code: string;
   name: string;
-  unit?: string;
-  dataType?: string;
-  category?: string;
   description?: string | null;
-  active: boolean;
   isDeleted?: boolean;
-  deletedAt?: string | null;
 }
 
 export interface IMeasurementTypesFilter {
   includeDeleted?: boolean;
   search?: string;
   code?: string;
-  sortBy?: 'name' | 'category' | 'key' | 'description';
+  sortBy?: 'code' | 'name' | 'description';
   sortDirection?: 'asc' | 'desc';
   page?: number;
   pageSize?: number;
@@ -30,20 +25,14 @@ export interface IMeasurementTypes {
 
 export interface IAssignableMeasurementType {
   id: string;
-  key: string;
+  code: string;
   name: string;
-  unit: string;
-  dataType: string;
-  category: string;
-  metrics: string[];
+  description?: string | null;
 }
 
 export interface IImportMeasurementTypeCsvRowRequest {
-  key: string;
-  name: string;
-  unit: string;
-  dataType: string;
-  category: string;
+  code?: string;
+  name?: string;
   description?: string | null;
 }
 
@@ -57,7 +46,7 @@ export interface IImportMeasurementTypesResult {
   rejectedRows: number;
   rows: Array<{
     rowNumber: number;
-    key?: string | null;
+    code?: string | null;
     created: boolean;
     reason?: string | null;
     measurementType?: IMeasurementType | null;
