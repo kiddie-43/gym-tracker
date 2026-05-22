@@ -1,34 +1,56 @@
-import type { MeasurementTypeDto, UpsertMeasurementTypeRequest } from '../../../interfaces/admin/measurementTypes/measurementTypes';
+import type { IImportMeasurementTypesResult, IMeasurementType } from '../../../interfaces/admin/measurementTypes/measurementTypes';
 import type { RootState } from '../../store';
 
 export type AdminMeasurementTypesFilters = {
   search: string;
+  code: string;
   includeDeleted: boolean;
 };
 
+export type AdminMeasurementTypesTable = {
+  list: IMeasurementType[];
+  page: number;
+  rowsPerPage: number;
+  totalCount: number;
+  sortBy: 'name' | 'category' | 'key' | 'description';
+  sortDirection: 'asc' | 'desc';
+  selectedIds: string[];
+};
+
 export type AdminMeasurementTypesState = {
-  list: MeasurementTypeDto[];
+  table: AdminMeasurementTypesTable;
   filters: AdminMeasurementTypesFilters;
-  form: UpsertMeasurementTypeRequest;
+  form: IMeasurementType;
+  csvResult: IImportMeasurementTypesResult | null;
   error: string | null;
   loading: boolean;
   popUpCode: string | null;
 };
 
 export const adminMeasurementTypesInitialState: AdminMeasurementTypesState = {
-  list: [],
-  filters: {
-    search: '',
-    includeDeleted: false,
+  table: {
+    list: [],
+    page: 0,
+    rowsPerPage: 10,
+    totalCount: 0,
+    sortBy: 'name',
+    sortDirection: 'asc',
+    selectedIds: [],
   },
+  filters: { search: '', code: '', includeDeleted: false },
   form: {
-    key: '',
+    id: undefined,
+    code: '',
     name: '',
     unit: '',
     dataType: 'integer',
     category: 'general',
     description: null,
+    active: true,
+    isDeleted: false,
+    deletedAt: null,
   },
+  csvResult: null,
   error: null,
   loading: false,
   popUpCode: null,

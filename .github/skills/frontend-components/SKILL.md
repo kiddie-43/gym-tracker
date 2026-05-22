@@ -364,11 +364,21 @@ El estilo concreto de cada tipo MUST venir del tema. MUST NOT hardcodearse color
 
 > **STOP — contrato FeedbackMessage cerrado**: MUST NOT añadirse props como `title`, `icon`, `action`, `variant`, `children` que no estan en este contrato. La personalizacion visual MUST hacerse en el tema MUI, no como nuevas props del componente.
 
-## Estado local vs Redux en componentes
+## Patron de formState en dialogs de formulario
 
-- **Estado local** (`useState`): usar para estado de UI puro que no necesita compartirse (ej: campo de busqueda local, estado de un input controlado, apertura de un drawer secundario).
-- **Redux**: MUST usarse cuando el estado es compartido entre componentes de distinto nivel, o cuando representa datos del servidor que deben persistir entre navegaciones dentro de la misma sesion.
-- Un componente de pagina SHOULD leer su estado de Redux y pasar datos a hijos por props, no conectar hijos directamente al store salvo que sea necesario para evitar prop drilling excesivo.
+Los dialogs de formulario (sufijo `Dialog`) MUST recibir los valores del formulario mediante una prop `formState` tipada, mapeada desde la interfaz de dominio almacenada en Redux. MUST NOT leer Redux directamente en el dialog.
+
+```ts
+// Tipo de la prop formState del dialog \u2014 solo los campos que el dialog necesita mostrar/editar
+interface MuscleFormState {
+  id: string | null;        // null = crear, string = editar
+  name: string;
+  code: string;
+  description: string;      // string vacio en vez de null/undefined para inputs controlados
+}
+
+interface MuscleFormDialogProps {\n  open: boolean;\n  formState: MuscleFormState;\n  onChange: (patch: Partial<MuscleFormState>) => void;\n  onClose: () => void;\n  onSubmit: () => void;\n  isSaving?: boolean;\n  error?: string | null;\n}
+```\n\nLa pagina mapea la interfaz de dominio (`IMuscle`) a `MuscleFormState` antes de pasarla:\n\n```tsx\n// MusclesPanel.tsx \u2014 mapeo de IMuscle (Redux) a MuscleFormState (prop del dialog)\n<MuscleFormDialog\n  formState={{ id: form.id ?? null, name: form.name, code: form.code, description: form.description ?? '' }}\n  onChange={(patch) => dispatch(setAdminMusclesForm({\n    ...form,\n    name: patch.name ?? form.name,\n    code: patch.code ?? form.code,\n    description: patch.description ?? form.description,\n  }))}\n  ...\n/>\n```\n\nReglas:\n- El tipo `formState` MUST usar `string` para todos los inputs de texto (no `string | null`) para evitar inputs no controlados.\n- El mapeo `null/undefined \u2192 ''` MUST hacerse en la pagina al pasar la prop, no en el dialog.\n- El `onChange` MUST mapear los campos del patch de vuelta a la interfaz de dominio al despachar a Redux.\n\n## Estado local vs Redux en componentes\n\n- **Estado local** (`useState`): usar para estado de UI puro que no necesita compartirse (ej: campo de busqueda local, estado de un input controlado, apertura de un drawer secundario).\n- **Redux**: MUST usarse cuando el estado es compartido entre componentes de distinto nivel, o cuando representa datos del servidor que deben persistir entre navegaciones dentro de la misma sesion.\n- Un componente de pagina SHOULD leer su estado de Redux y pasar datos a hijos por props, no conectar hijos directamente al store salvo que sea necesario para evitar prop drilling excesivo.
 
 ## Reglas de nombres
 

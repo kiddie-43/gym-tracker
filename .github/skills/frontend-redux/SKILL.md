@@ -100,32 +100,90 @@ export function DietsTable({ rows, pagination, sort, onEdit }: DietsTableProps) 
 
 ## Patron estandar de async thunk
 
-Cada operacion asincrona MUST seguir este patron en el archivo de acciones del modulo:
+Cada operacion asincrona MUST usar `createAsyncThunk` con `rejectWithValue` y delegar el ciclo de vida (`loading`, `error`) al **reducer** via los casos `.pending / .fulfilled / .rejected`. MUST NOT despacharse `setLoading` ni `setError` manualmente dentro del thunk.
 
 ```ts
-// dietsActions.ts
-export const fetchDiets = createAsyncThunk(
-  'diets/fetchList',
-  async (_, { dispatch }) => {
-    dispatch(setDietsLoading(true));
-    dispatch(setDietsError(null));
+// Tipo de configuracion del thunk — definir una vez por modulo
+type AdminMusclesThunkConfig = {
+  state: RootState;
+  rejectValue: string;
+};
+
+// Thunk de listado — lee filtros y tabla desde el estado Redux
+export const fetchAdminMuscles = createAsyncThunk<IMuscles, void, AdminMusclesThunkConfig>(
+  'muscles/fetch',
+  async (_arg, { getState, rejectWithValue }) => {
+    const { filters, table } = getState().adminMuscles;
     try {
-      const data = await dietsApi.getAll();
-      dispatch(setDietsList(data));
-    } catch (e) {
-      dispatch(setDietsError(getErrorMessage(e)));
-    } finally {
-      dispatch(setDietsLoading(false));
+      return await listMusclesPage({
+        includeDeleted: filters.includeDeleted,
+        search: filters.search || undefined,
+        sortBy: table.sortBy,
+        sortDirection: table.sortDirection,
+        page: table.page + 1,      // API es 1-indexed
+        pageSize: table.rowsPerPage,
+      });
+    } catch (error) {
+      return rejectWithValue(toErrorMessage(error, 'No se pudo cargar el listado.'));
     }
   },
 );
+
+// Thunk de submit de formulario — lee form desde el estado Redux
+export const submitAdminMuscleForm = createAsyncThunk<void, void, AdminMusclesThunkConfig>(
+  'muscles/submitForm',
+  async (_arg, { getState, rejectWithValue }) => {
+    const { form } = getState().adminMuscles;
+    try {
+      if (form.id) {
+        await updateMuscle(form.id, buildRequest(form));
+      } else {
+        await createMuscleApi(buildRequest(form));
+      }
+    } catch (error) {
+      return rejectWithValue(toErrorMessage(error, 'No se pudo guardar.'));
+    }
+  },
+);
+
+// Thunk con argumento explicito (ej: borrado por ids)
+export const deleteAdminMuscles = createAsyncThunk<
+  { failedCount: number; total: number },
+  string[],
+  AdminMusclesThunkConfig
+>(
+  'muscles/delete',
+  async (ids, { rejectWithValue }) => { ... },
+);
+```
+
+El reducer MUST manejar los tres casos de cada thunk:
+
+```ts
+// adminMusclesReducer.ts
+builder
+  .addCase(fetchAdminMuscles.pending, (state) => {
+    state.loading = true;
+    state.error = null;
+  })
+  .addCase(fetchAdminMuscles.fulfilled, (state, action) => {
+    state.loading = false;
+    state.table.list = action.payload.items;
+    state.table.totalCount = action.payload.totalCount;
+    // page viene 1-indexed desde la API — convertir a 0-indexed para MUI
+    state.table.page = action.payload.page - 1;
+  })
+  .addCase(fetchAdminMuscles.rejected, (state, action) => {
+    state.loading = false;
+    state.error = action.payload ?? 'Error desconocido';
+  });
 ```
 
 Reglas:
-- MUST despacharse `setLoading(true)` al inicio y `setLoading(false)` en `finally`.
-- MUST despacharse `setError(null)` antes de la llamada y `setError(mensaje)` en el `catch`.
+- MUST NOT despacharse `setLoading` ni `setError` dentro del thunk — el reducer los gestiona via `.pending/.rejected`.
+- El thunk de fetch MUST leer `filters` y `table` desde `getState()`, NO recibirlos como argumento.
 - MUST NOT hacerse llamadas a la API directamente en un reducer.
-- La funcion `getErrorMessage` MUST definirse en `utils/` para extraer el mensaje de cualquier tipo de error; MUST NOT duplicarse esta logica en cada thunk.
+- La funcion `toErrorMessage` MUST definirse en `utils/` para extraer el mensaje de cualquier tipo de error; MUST NOT duplicarse esta logica en cada thunk.
 
 **Reset en desmontaje**: la pagina MUST resetear el estado del modulo al desmontarse para evitar datos obsoletos en navegaciones futuras:
 
@@ -143,28 +201,90 @@ Cada modulo CRUD MUST exponer estos campos en su state:
 
 | Campo | Tipo | Proposito |
 |---|---|---|
-| `list` | `EntidadDto[]` | Datos del listado |
+| `table` | objeto tipado | Agrupa TODOS los datos de la tabla: lista, paginacion, ordenacion y seleccion |
 | `filters` | objeto tipado | Estado de filtros aplicados (busqueda, incluir borrados, etc.) |
-| `form` | `UpsertEntidadRequest` | Datos del formulario (crear / editar) |
+| `form` | `Entidad` (interfaz de dominio) | Datos del formulario — MUST usarse la interfaz de dominio (con `id?`) para cubrir crear y editar sin duplicar tipos |
 | `error` | `string \| null` | Error de la ultima operacion |
 | `loading` | `boolean` | Estado de carga (skeleton / spinner) |
 | `popUpCode` | `string \| null` | Codigo del modal activo (ver valores estandar abajo) |
-| `pagination` | `PaginationState` | Estado de paginacion para `DataTable` |
-| `sort` | `SortState` | Estado de ordenacion para `DataTable` |
 
-Tipos compartidos para `pagination` y `sort`:
+Estructura obligatoria del campo `table`:
 
 ```ts
-// Definir en interfaces/common/ y reutilizar en todos los modulos
-export type PaginationState = {
-  page: number;          // 0-indexed
-  rowsPerPage: number;   // default: 10
-  total: number;
+export type <Modulo>Table = {
+  list: Entidad[];          // items de la pagina actual
+  page: number;             // 0-indexed
+  rowsPerPage: number;      // default: 10
+  totalCount: number;       // total en base de datos (para paginacion)
+  sortBy: 'campo1' | 'campo2' | 'campo3';  // columnas permitidas del modulo
+  sortDirection: 'asc' | 'desc';
+  selectedIds: string[];    // ids de filas seleccionadas (borrado multiple, etc.)
+};
+```
+
+Estructura obligatoria del campo `filters`:
+
+```ts
+export type <Modulo>Filters = {
+  search: string;           // busqueda de texto libre
+  // campos adicionales especificos del modulo:
+  includeDeleted: boolean;  // si el modulo tiene soft-delete
+  // otros filtros especificos...
+};
+```
+
+La interfaz de dominio se usa DIRECTAMENTE como tipo de `form`:
+
+```ts
+// CORRECTO — reutiliza la interfaz de dominio; id? cubre crear (undefined) y editar (string)
+form: IMuscle
+// form: { id: undefined, name: '', code: '', ... } → crear
+// form: { id: '123', name: 'Bicep', code: 'BIC', ... } → editar
+
+// INCORRECTO — duplica campos que ya existen en IMuscle
+form: { name: string; code: string; description: string; active: boolean }
+```
+
+Ejemplo completo de estado de un modulo CRUD:
+
+```ts
+import type { IMuscle, IImportMusclesResult } from '../../../interfaces/muscles/IMuscles';
+
+export type AdminMusclesTable = {
+  list: IMuscle[];
+  page: number;
+  rowsPerPage: number;
+  totalCount: number;
+  sortBy: 'code' | 'name' | 'description';
+  sortDirection: 'asc' | 'desc';
+  selectedIds: string[];
 };
 
-export type SortState = {
-  field: string;         // identificador de columna definido por el modulo
-  direction: 'asc' | 'desc';
+export type AdminMusclesFilters = {
+  search: string;
+  code: string;
+  name: string;
+  includeDeleted: boolean;
+};
+
+export type AdminMusclesState = {
+  table: AdminMusclesTable;
+  filters: AdminMusclesFilters;
+  form: IMuscle;
+  csvResult: IImportMusclesResult | null;  // opcional: solo si el modulo soporta importacion
+  error: string | null;
+  loading: boolean;
+  popUpCode: string | null;
+};
+
+export const adminMusclesInitialState: AdminMusclesState = {
+  table: { list: [], page: 0, rowsPerPage: 10, totalCount: 0, sortBy: 'name', sortDirection: 'asc', selectedIds: [] },
+  filters: { search: '', code: '', name: '', includeDeleted: false },
+  form: { id: undefined, name: '', code: '', description: null, active: true, muscleGroupIds: [], isDeleted: false, deletedAt: null },
+  csvResult: null,
+  error: null,
+  loading: false,
+  popUpCode: null,
 };
 ```
 
@@ -174,10 +294,11 @@ Esta regla elimina la ambiguedad sobre donde gestionar el estado en un modulo CR
 
 | Estado | Donde va | Por que |
 |---|---|---|
-| Datos del listado | Redux `list` | Compartido entre tabla, filtros y la pagina |
+| Datos del listado | Redux `table.list` | Compartido entre tabla, filtros y la pagina |
+| Paginacion y ordenacion | Redux `table.page / table.rowsPerPage / table.sortBy / table.sortDirection` | La pagina los pasa a `DataTable` y los usa en la llamada a la API |
+| Ids seleccionados (borrado multiple) | Redux `table.selectedIds` | La pagina los necesita para el boton de borrar seleccion |
 | Valores del formulario (crear y editar) | Redux `form` | La pagina y el dialog lo comparten; debe persistir entre renders |
 | Valores de los filtros | Redux `filters` | La pagina los lee para llamar a la API; deben sobrevivir al re-render |
-| Paginacion y ordenacion | Redux `pagination` / `sort` | La pagina los pasa a `DataTable` y los usa en la llamada a la API |
 | Que modal esta abierto | Redux `popUpCode` | La pagina decide que dialog renderizar segun este valor |
 | Estado de un input controlado durante la escritura | `useState` local | UI pura, no necesita salir del componente |
 | Apertura de un tooltip, drawer secundario o menu | `useState` local | Estado efimero de presentacion |
@@ -188,65 +309,93 @@ Esta regla elimina la ambiguedad sobre donde gestionar el estado en un modulo CR
 
 ```tsx
 // 1. Usuario pulsa "Crear" en la pagina
-dispatch(setDietsForm(initialDietForm));   // limpia el formulario
-dispatch(setDietsPopUpCode('create'));      // abre el dialog
+dispatch(setAdminMusclesForm(adminMusclesInitialState.form));  // limpia el formulario
+dispatch(setAdminMusclesPopUpCode('CREATE'));                   // abre el dialog
 
-// 2. El dialog lee el formulario de Redux
-const { form, popUpCode } = useSelector... // solo en DietsPage, se pasa por props
+// 2. El dialog recibe formState por props (mapeado desde form de Redux)
+// formState={{ id: form.id ?? null, name: form.name, code: form.code, ... }}
 
-// 3. Cada cambio de campo dispatcha la accion correspondiente
-dispatch(setDietsForm({ ...form, name: e.target.value }));
+// 3. Cada cambio de campo dispatcha solo los campos necesarios
+dispatch(setAdminMusclesForm({ ...form, name: patch.name ?? form.name }));
 
 // 4. Al guardar
-dispatch(createDiet(form));                // thunk: llama API y refresca list
-dispatch(setDietsPopUpCode(null));         // cierra el dialog
+void dispatch(submitAdminMuscleForm());    // thunk: llama API (create o update segun form.id)
+dispatch(setAdminMusclesPopUpCode(null));  // cierra el dialog
+void dispatch(fetchAdminMuscles());        // refresca el listado
 ```
 
 ### Flujo de editar
 
 ```tsx
 // 1. Usuario pulsa "Editar" en una fila
-dispatch(setDietsForm(selectedDiet));      // carga los datos del item en el formulario
-dispatch(setDietsPopUpCode('edit'));        // abre el dialog de edicion
+dispatch(setAdminMusclesForm(selectedRow));   // carga los datos del item en el formulario
+dispatch(setAdminMusclesPopUpCode('EDIT'));   // abre el dialog de edicion
 
-// 2. Mismo flujo que crear — el dialog recibe form por props
+// 2. Mismo flujo que crear — el dialog recibe formState por props
 
-// 3. Al guardar
-dispatch(updateDiet(form));               // thunk: llama API y refresca list
-dispatch(setDietsPopUpCode(null));        // cierra el dialog
+// 3. Al guardar — submitAdminMuscleForm detecta form.id para saber si crear o editar
+void dispatch(submitAdminMuscleForm());
+dispatch(setAdminMusclesPopUpCode(null));
+void dispatch(fetchAdminMuscles());
 ```
 
 ### Flujo de filtros
 
-```tsx
-// Cada cambio en la barra de filtros
-dispatch(setDietsFilters({ ...filters, search: value }));
-dispatch(setDietsPagination({ ...pagination, page: 0 })); // reset a pagina 0
+Los cambios de filtros se acumulan en Redux SIN relanzar la carga. La carga ONLY se dispara al pulsar el boton "Aplicar".
 
-// La pagina reacciona al cambio de filtros y relanza la carga
-useEffect(() => {
-  dispatch(fetchDiets());
-}, [filters, pagination.page, pagination.rowsPerPage, sort]);
+```tsx
+// Cada cambio de un campo de filtro — solo actualiza Redux, NO hace fetch
+dispatch(setAdminMusclesFilters({ ...filters, search: value }));
+dispatch(setAdminMusclesFilters({ ...filters, includeDeleted: checked }));
+
+// Boton "Aplicar" del drawer de filtros
+// 1. Resetea la pagina a 0 ANTES del fetch
+dispatch(setAdminMusclesTable({ ...table, page: 0 }));
+// 2. Cierra el drawer
+dispatch(setAdminMusclesPopUpCode(null));
+// 3. Dispara el fetch — el thunk lee filters y table actualizados desde getState()
+void dispatch(fetchAdminMuscles());
 ```
+
+MUST NOT usarse `useEffect` que observe `filters` para disparar el fetch automaticamente — provoca fetches no deseados durante la escritura y dificulta el control del flujo.
 
 ## Valores estandar de `popUpCode`
 
-MUST usarse estos valores y ninguno otro sin justificacion documentada:
+MUST usarse estos valores en MAYUSCULAS y ninguno otro sin justificacion documentada:
 
 | Valor | Cuando usarlo |
 |---|---|
 | `null` | Ningun modal abierto |
-| `'create'` | Dialog de crear nueva entidad |
-| `'edit'` | Dialog de editar entidad existente |
-| `'delete'` | Dialog de confirmacion de borrado |
-| `'view'` | Dialog de vista detalle (solo lectura) |
+| `'CREATE'` | Dialog de crear nueva entidad |
+| `'EDIT'` | Dialog de editar entidad existente |
+| `'DELETE'` | Dialog de confirmacion de borrado |
+| `'VIEW'` | Dialog de vista detalle (solo lectura) |
+| `'FILTERS'` | Drawer/dialog de filtros |
+| `'CSV_IMPORT'` | Dialog de importacion CSV (solo si el modulo lo soporta) |
 
 Uso en la UI:
 
 ```ts
-dispatch(setDietsPopUpCode('create'));         // abrir
-dispatch(setDietsPopUpCode(null));             // cerrar
-open={popUpCode === 'create'}                  // controlar apertura del dialog
+dispatch(setAdminMusclesPopUpCode('CREATE'));   // abrir
+dispatch(setAdminMusclesPopUpCode(null));        // cerrar
+open={popUpCode === 'CREATE'}                   // controlar apertura del dialog
+
+// Apertura de filtros desde el boton del header
+dispatch(setAdminMusclesPopUpCode('FILTERS'));
+// Cierre al aplicar filtros
+dispatch(setAdminMusclesPopUpCode(null));
+```
+
+**Nota importante**: al abrir un dialog de crear o editar, MUST limpiarse o cargarse el formulario ANTES de cambiar `popUpCode`:
+
+```ts
+// Crear
+dispatch(setAdminMusclesForm(adminMusclesInitialState.form));
+dispatch(setAdminMusclesPopUpCode('CREATE'));
+
+// Editar — cargar el item seleccionado en el form
+dispatch(setAdminMusclesForm(selectedRow));
+dispatch(setAdminMusclesPopUpCode('EDIT'));
 ```
 
 ## Selectores

@@ -15,30 +15,28 @@ import ListItemText from '@mui/material/ListItemText';
 import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
 import TableSortLabel from '@mui/material/TableSortLabel';
-import TableBody from '@mui/material/TableBody';
 import TableCell from '@mui/material/TableCell';
-import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import { useTranslation } from 'react-i18next';
 
 import { DataTable } from '../../../../components/DataTable/DataTable';
-import type { MeasurementTypeDto } from '../../../../interfaces/admin/measurementTypes/measurementTypes';
+import type { IMeasurementType } from '../../../../interfaces/admin/measurementTypes/measurementTypes';
 
 type MeasurementTypesTableProps = {
-  rows: MeasurementTypeDto[];
+  rows: IMeasurementType[];
   selectedIds: string[];
-  sortBy: 'name' | 'description';
+  sortBy: 'name' | 'category' | 'key' | 'description';
   sortDirection: 'asc' | 'desc';
-  onSortChange: (field: 'name' | 'description') => void;
+  onSortChange: (field: 'name' | 'category' | 'key' | 'description') => void;
   page: number;
   rowsPerPage: number;
   totalCount: number;
   onPageChange: (_event: unknown, newPage: number) => void;
   onRowsPerPageChange: (event: ChangeEvent<HTMLInputElement>) => void;
   onSelectionChange: (ids: string[]) => void;
-  onEdit: (row: MeasurementTypeDto) => void;
-  onDelete: (row: MeasurementTypeDto) => void;
-  onReactivate: (row: MeasurementTypeDto) => void;
+  onEdit: (row: IMeasurementType) => void;
+  onDelete: (row: IMeasurementType) => void;
+  onReactivate: (row: IMeasurementType) => void;
 };
 
 export function MeasurementTypesTable({
@@ -61,7 +59,7 @@ export function MeasurementTypesTable({
   const [menuAnchorEl, setMenuAnchorEl] = useState<HTMLElement | null>(null);
   const [menuRowId, setMenuRowId] = useState<string | null>(null);
 
-  const activeRowIds = rows.filter((row) => !row.isDeleted).map((row) => row.id);
+  const activeRowIds = rows.filter((row) => !row.isDeleted).map((row) => row.id).filter((id): id is string => id !== undefined);
   const selectedActiveCount = activeRowIds.filter((id) => selectedIds.includes(id)).length;
   const allActiveSelected = activeRowIds.length > 0 && selectedActiveCount === activeRowIds.length;
   const someActiveSelected = selectedActiveCount > 0 && !allActiveSelected;
@@ -134,13 +132,13 @@ export function MeasurementTypesTable({
         body={(
           <>
             {rows.map((row) => (
-              <TableRow key={row.id}>
+              <TableRow key={row.id ?? row.code}>
                 <TableCell padding="checkbox">
                   <Checkbox
-                    checked={selectedIds.includes(row.id)}
+                    checked={row.id !== undefined && selectedIds.includes(row.id)}
                     disabled={row.isDeleted}
-                    onChange={(_event, checked) => toggleSelectRow(row.id, checked)}
-                    inputProps={{ 'aria-label': t('administration.measurementTypes.selectRow', { code: row.key }) }}
+                    onChange={(_event, checked) => { if (row.id) toggleSelectRow(row.id, checked); }}
+                    inputProps={{ 'aria-label': t('administration.measurementTypes.selectRow', { code: row.code }) }}
                   />
                 </TableCell>
                 <TableCell>{row.name}</TableCell>
@@ -157,7 +155,7 @@ export function MeasurementTypesTable({
                   <IconButton
                     size="small"
                     aria-label={t('administration.common.actionsMenu')}
-                    onClick={(event) => openMenu(event, row.id)}
+                    onClick={(event) => { if (row.id) openMenu(event, row.id); }}
                   >
                     <MoreVertRoundedIcon fontSize="small" />
                   </IconButton>

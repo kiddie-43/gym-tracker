@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 
 import FilterListRoundedIcon from '@mui/icons-material/FilterListRounded';
+import Badge from '@mui/material/Badge';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import CircularProgress from '@mui/material/CircularProgress';
@@ -25,7 +26,7 @@ import {
   setAdminMusclesPopUpCode,
   setAdminMusclesTable,
 } from '../../../redux/actions/adminMuscles/adminMusclesActions';
-import { selectAdminMusclesState } from '../../../redux/states/adminMuscles/adminMusclesState';
+import { selectAdminMusclesState, adminMusclesInitialState } from '../../../redux/states/adminMuscles/adminMusclesState';
 import { MusclesFiltersDrawer } from './filters/MusclesFiltersDrawer';
 import { MuscleFormDialog } from './form/MuscleFormDialog';
 import { MusclesCsvImportDialog } from './MusclesCsvImportDialog';
@@ -46,6 +47,8 @@ export function MusclesPanel({ supportsImport }: { supportsImport: boolean }) {
 
   const { list: rows, selectedIds } = table;
 
+  const hasActiveFilters = filters.search !== '' || filters.code !== '' || filters.name !== '' || filters.includeDeleted;
+
   const formOpen = popUpCode === 'CREATE' || popUpCode === 'EDIT';
   const filtersOpen = popUpCode === 'FILTERS';
   const deleteDialogOpen = popUpCode === 'DELETE';
@@ -59,6 +62,7 @@ export function MusclesPanel({ supportsImport }: { supportsImport: boolean }) {
   );
 
   useEffect(() => {
+    dispatch(setAdminMusclesTable(adminMusclesInitialState.table));
     void dispatch(fetchAdminMuscles());
   }, [dispatch]);
 
@@ -141,7 +145,11 @@ export function MusclesPanel({ supportsImport }: { supportsImport: boolean }) {
         <Typography variant="h4">{t('administration.muscles.title')}</Typography>
         <Button
           variant="outlined"
-          startIcon={<FilterListRoundedIcon />}
+          startIcon={
+            <Badge variant="dot" color="primary" invisible={!hasActiveFilters}>
+              <FilterListRoundedIcon />
+            </Badge>
+          }
           onClick={() => dispatch(setAdminMusclesPopUpCode('FILTERS'))}
         >
           {t('administration.common.filters')}
@@ -235,10 +243,10 @@ export function MusclesPanel({ supportsImport }: { supportsImport: boolean }) {
         open={formOpen}
         loading={loading}
         error={error}
-        formState={{ id: form.id ?? null, name: form.name, code: form.code, description: form.description ?? '' }}
+        formState={form}
         onClose={closeForm}
         onSubmit={() => { void submitForm(); }}
-        onChange={(patch) => dispatch(setAdminMusclesForm({ ...form, name: patch.name ?? form.name, code: patch.code ?? form.code, description: patch.description ?? form.description }))}
+        onChange={(patch) => dispatch(setAdminMusclesForm({ ...form, ...patch }))}
       />
 
       <MusclesCsvImportDialog

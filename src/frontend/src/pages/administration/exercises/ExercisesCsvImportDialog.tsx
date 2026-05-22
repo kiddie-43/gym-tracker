@@ -13,21 +13,21 @@ import Typography from '@mui/material/Typography';
 import { useTranslation } from 'react-i18next';
 
 import type {
-  ImportExerciseCsvRowRequest,
-  ImportExercisesResult,
+  IImportExerciseCsvRowRequest,
+  IImportExercisesResult,
 } from '../../../interfaces/admin/exercises/exercises';
 import { PopupDialog } from '../../../components/PopupDialog/PopupDialog';
 
 export interface ExercisesCsvImportDialogProps {
   open: boolean;
   loading: boolean;
-  result: ImportExercisesResult | null;
+  result: IImportExercisesResult | null;
   error: string | null;
   onClose: () => void;
-  onImport: (rows: ImportExerciseCsvRowRequest[]) => Promise<void>;
+  onImport: (rows: IImportExerciseCsvRowRequest[]) => Promise<void>;
 }
 
-function parseCsvRows(raw: string): ImportExerciseCsvRowRequest[] {
+function parseCsvRows(raw: string): IImportExerciseCsvRowRequest[] {
   const lines = raw
     .split(/\r?\n/)
     .map((line) => line.trim())

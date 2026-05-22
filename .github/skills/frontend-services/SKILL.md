@@ -55,13 +55,23 @@ services/
 
 ## Cliente HTTP
 
-Todo servicio de API MUST importar el cliente HTTP base desde su ubicacion centralizada. MUST NOT crearse otro cliente HTTP:
+Todo servicio de API MUST importar la funcion `apiFetch` desde su ubicacion centralizada. MUST NOT crearse otro cliente HTTP:
 
 ```ts
-import { httpClient } from '../../httpClient';
+import { apiFetch } from '../../apiFetch';
 ```
 
-`httpClient` encapsula la configuracion de base URL, cabeceras y manejo de errores HTTP. Los servicios solo construyen la ruta y los parametros.
+`apiFetch<T>` encapsula la configuracion de base URL y el manejo de errores HTTP. Los servicios construyen la ruta, los parametros y las cabeceras.
+
+### Cabeceras de autenticacion
+
+Los servicios del area de administracion MUST incluir `adminAuthHeaders` en todas sus llamadas:
+
+```ts
+import { adminAuthHeaders } from '../../adminAuthHeaders';
+```
+
+PASS siempre como `headers` en el objeto de opciones de `apiFetch`. MUST NOT hardcodearse cabeceras de autenticacion en cada llamada individualmente.
 
 ## Contrato estandar de un servicio CRUD
 
@@ -81,40 +91,52 @@ Todo servicio de dominio bajo `services/api/<modulo>/` MUST implementar estas fu
 ```ts
 // <modulo>Api.ts
 
-import { httpClient } from '../../httpClient';
-import type { MuscleDto, UpsertMuscleRequest, MusclesFilters } from '../../../interfaces/muscles/muscles';
-import type { PagedResult, PaginationState, SortState } from '../../../interfaces/common/common';
+import { apiFetch } from '../../apiFetch';
+import { adminAuthHeaders } from '../../adminAuthHeaders';
+import type { IMuscle, IMuscles, IMusclesFilter, IUpsertMuscleRequest } from '../../../interfaces/muscles/IMuscles';
 
-export async function getMusclesPage(
-  filters: MusclesFilters,
-  pagination: PaginationState,
-  sort: SortState,
-): Promise<PagedResult<MuscleDto>> {
-  return httpClient.get('/muscles', {
-    params: {
-      ...filters,
-      page: pagination.page,
-      pageSize: pagination.rowsPerPage,
-      sortField: sort.field,
-      sortDir: sort.direction,
-    },
+// Listado paginado — construye URLSearchParams filtrando valores vacios/undefined/null
+export function listMusclesPage(query: IMusclesFilter): Promise<IMuscles> {
+  const params = new URLSearchParams(
+    Object.entries(query)
+      .filter(([, v]) => v !== undefined && v !== null && v !== '')
+      .map(([k, v]) => [k, String(v)]),
+  );
+  return apiFetch<IMuscles>(`/api/admin/muscles?${params.toString()}`, { headers: adminAuthHeaders });
+}
+
+// Notas sobre serializacion de parametros:
+// - string vacio ('') SE EXCLUYE del querystring (filtro de texto sin valor = no filtrar)
+// - undefined y null SE EXCLUYEN
+// - boolean false NO SE EXCLUYE — false !== '' es TRUE, por lo que se serializa como 'includeDeleted=false'
+// - boolean true se serializa como 'includeDeleted=true'
+// STOP: no cambies el filtro a 'v' (falsy) — excluiria los booleanos false que son semanticamente validos
+
+export function getMuscleById(id: string): Promise<IMuscle> {
+  return apiFetch<IMuscle>(`/api/admin/muscles/${id}`, { headers: adminAuthHeaders });
+}
+
+export function createMuscleApi(request: IUpsertMuscleRequest): Promise<IMuscle> {
+  return apiFetch<IMuscle>('/api/admin/muscles', {
+    method: 'POST',
+    headers: adminAuthHeaders,
+    body: JSON.stringify(request),
   });
 }
 
-export async function getMuscleById(id: string): Promise<MuscleDto> {
-  return httpClient.get(`/muscles/${id}`);
+export function updateMuscle(id: string, request: IUpsertMuscleRequest): Promise<void> {
+  return apiFetch<void>(`/api/admin/muscles/${id}`, {
+    method: 'PUT',
+    headers: adminAuthHeaders,
+    body: JSON.stringify(request),
+  });
 }
 
-export async function createMuscle(request: UpsertMuscleRequest): Promise<MuscleDto> {
-  return httpClient.post('/muscles', request);
-}
-
-export async function updateMuscle(id: string, request: UpsertMuscleRequest): Promise<MuscleDto> {
-  return httpClient.put(`/muscles/${id}`, request);
-}
-
-export async function deleteMuscle(id: string): Promise<void> {
-  return httpClient.delete(`/muscles/${id}`);
+export function deleteMuscle(id: string): Promise<void> {
+  return apiFetch<void>(`/api/admin/muscles/${id}`, {
+    method: 'DELETE',
+    headers: adminAuthHeaders,
+  });
 }
 ```
 
@@ -130,27 +152,54 @@ export async function searchMuscles(query: string): Promise<MuscleDto[]> {
 
 Esta funcion se usa en un thunk de autocomplete separado del thunk de listado principal. MUST NOT reutilizarse `get<Entidades>Page` para alimentar un selector.
 
-## Tipo `PagedResult<T>`
+## Tipo de retorno del listado paginado
 
-El tipo de retorno del listado paginado MUST definirse en `interfaces/common/common.ts` y reutilizarse en todos los servicios:
+El tipo de retorno del listado paginado MUST coincidir con lo que devuelve la API. MUST definirse en la carpeta `interfaces/<modulo>/` del dominio correspondiente:
 
 ```ts
-// interfaces/common/common.ts
-export type PagedResult<T> = {
-  items: T[];
-  total: number;
-};
+// interfaces/muscles/IMuscles.ts
+export interface IMuscles {
+  items: IMuscle[];
+  totalCount: number;  // total de registros en base de datos (para paginacion)
+  page: number;        // pagina actual (1-indexed, viene de la API)
+  pageSize: number;
+}
 ```
 
-`total` es el total de registros en base de datos (no el numero de items de la pagina). Lo consume Redux para el campo `pagination.total`.
+`totalCount` es lo que consume Redux para `table.totalCount`. La API devuelve `page` como 1-indexed; el reducer MUST convertirlo a 0-indexed al almacenarlo en `table.page`:
+
+```ts
+// reducer
+state.table.page = action.payload.page - 1;  // API 1-indexed → MUI 0-indexed
+```
+
+MUST NOT definirse un tipo `PagedResult<T>` generico en `interfaces/common/` si los campos devueltos por la API difieren entre dominios.
 
 ## Convencion de nombres de funciones
 
-- Listado paginado: `get<Entidades>Page` — `getMusclesPage`, `getRoutinesPage`
+- Listado paginado: `list<Entidades>Page` — `listMusclesPage`, `listRoutinesPage`
 - Por id: `get<Entidad>ById` — `getMuscleById`, `getRoutineById`
-- Crear: `create<Entidad>` — `createMuscle`, `createRoutine`
+- Crear: `create<Entidad>Api` — `createMuscleApi`, `createRoutineApi` (el sufijo `Api` evita colision con el nombre de la entidad en componentes)
 - Editar: `update<Entidad>` — `updateMuscle`, `updateRoutine`
 - Borrar: `delete<Entidad>` — `deleteMuscle`, `deleteRoutine`
 - Autocomplete: `search<Entidades>` — `searchMuscles`, `searchExercises`
 
 El nombre de la entidad MUST ser consistente con el usado en `interfaces/`, `redux/` y `pages/`.
+
+## Estructura de carpetas para servicios de administracion
+
+Los servicios usados exclusivamente por el area admin MUST ubicarse bajo `services/api/admin/<modulo>/`:
+
+```
+services/
+  api/
+    admin/
+      muscles/
+        musclesApi.ts
+      exercises/
+        exercisesApi.ts
+      measurements/
+        measurementsApi.ts
+```
+
+Los servicios de areas no-admin (p.ej. endpoints publicos o de usuario) van directamente bajo `services/api/<modulo>/`.

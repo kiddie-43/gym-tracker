@@ -1,9 +1,8 @@
-import type { AdminEntityBase } from '../common/common';
-import type { MuscleDto } from '../muscles/muscles';
+﻿import type { IMuscle } from '../../muscles/IMuscles';
 
 export type ExerciseMediaType = 0 | 1;
 
-export type ExerciseMediaDto = {
+export interface IExerciseMedia {
   mediaId: string;
   mediaType: ExerciseMediaType;
   title: string;
@@ -19,65 +18,27 @@ export type ExerciseMediaDto = {
   createdAt: string;
   updatedAt: string;
   deletedAt?: string | null;
-};
+}
 
-export type ExerciseDto = AdminEntityBase & {
-  category: string;
-  difficulty: string;
-  measurementTypeId: string;
-  measurementTypeName: string;
-  measurementTypeCode?: string;
-  primaryMuscles: MuscleDto[];
-  secondaryMuscles: MuscleDto[];
-  images: string[];
-  videos: string[];
-  deletedAt?: string | null;
-};
-
-export type UpsertExerciseRequest = {
+export interface IExercise {
+  id?: string;
   name: string;
-  code: string;
-  description?: string | null;
-  category: string;
-  difficulty: string;
-  measurementTypeId: string;
-  primaryMuscleIds: string[];
-  secondaryMuscleIds: string[];
-  images?: string[];
-  videos?: string[];
-};
-
-export type ImportExerciseCsvRowRequest = {
   code?: string;
-  name?: string;
   description?: string | null;
   category?: string;
   difficulty?: string;
   measurementTypeId?: string;
-  primaryMuscleIds?: string[];
-  secondaryMuscleIds?: string[];
-};
+  measurementTypeName?: string;
+  primaryMuscles: IMuscle[];
+  secondaryMuscles: IMuscle[];
+  images?: string[];
+  videos?: string[];
+  active?: boolean;
+  isDeleted?: boolean;
+  deletedAt?: string | null;
+}
 
-export type ImportExercisesRequest = {
-  rows: ImportExerciseCsvRowRequest[];
-};
-
-export type ImportExerciseCsvRowResult = {
-  rowNumber: number;
-  code?: string;
-  created: boolean;
-  reason?: string;
-  exercise?: ExerciseDto | null;
-};
-
-export type ImportExercisesResult = {
-  totalRows: number;
-  createdRows: number;
-  rejectedRows: number;
-  rows: ImportExerciseCsvRowResult[];
-};
-
-export type ExercisesListQuery = {
+export interface IExercisesFilter {
   includeDeleted?: boolean;
   search?: string;
   difficulties?: string[];
@@ -88,24 +49,52 @@ export type ExercisesListQuery = {
   sortDirection?: 'asc' | 'desc';
   page?: number;
   pageSize?: number;
-};
+}
 
-export type ExercisesPageDto = {
-  items: ExerciseDto[];
+export interface IExercises {
+  items: IExercise[];
   totalCount: number;
   page: number;
   pageSize: number;
-};
+}
 
-export type RequestUploadUrlRequest = {
+export interface IImportExerciseCsvRowRequest {
+  code?: string;
+  name?: string;
+  description?: string | null;
+  category?: string;
+  difficulty?: string;
+  measurementTypeId?: string;
+  primaryMuscleIds?: string[];
+  secondaryMuscleIds?: string[];
+}
+
+export interface IImportExercisesRequest {
+  rows: IImportExerciseCsvRowRequest[];
+}
+
+export interface IImportExercisesResult {
+  totalRows: number;
+  createdRows: number;
+  rejectedRows: number;
+  rows: Array<{
+    rowNumber: number;
+    code?: string;
+    created: boolean;
+    reason?: string;
+    exercise?: IExercise | null;
+  }>;
+}
+
+export interface IRequestUploadUrlRequest {
   mediaType: ExerciseMediaType;
   fileName: string;
   contentType: string;
   sizeBytes: number;
   title?: string | null;
-};
+}
 
-export type MediaUploadTicket = {
+export interface IMediaUploadTicket {
   exerciseId: string;
   mediaId: string;
   storagePath: string;
@@ -113,9 +102,9 @@ export type MediaUploadTicket = {
   expiresAt: string;
   contentType: string;
   maxSizeBytes: number;
-};
+}
 
-export type ConfirmExerciseMediaRequest = {
+export interface IConfirmExerciseMediaRequest {
   mediaId: string;
   mediaType: ExerciseMediaType;
   storagePath: string;
@@ -126,17 +115,18 @@ export type ConfirmExerciseMediaRequest = {
   title?: string | null;
   sortOrder: number;
   isPrimary: boolean;
-};
+}
 
-export type ReorderExerciseMediaRequest = {
+export interface IReorderExerciseMediaRequest {
   items: { mediaId: string; sortOrder: number }[];
-};
+}
 
-export type SetPrimaryExerciseMediaRequest = {
+export interface ISetPrimaryExerciseMediaRequest {
   mediaId: string;
-};
+}
 
-export type UpdateExerciseMediaRequest = {
+export interface IUpdateExerciseMediaRequest {
   title?: string | null;
   active?: boolean | null;
-};
+}
+

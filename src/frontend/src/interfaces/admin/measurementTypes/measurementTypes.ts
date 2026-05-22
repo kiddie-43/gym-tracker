@@ -1,34 +1,34 @@
-export type MeasurementTypeDto = {
-  id: string;
-  key: string;
+export interface IMeasurementType {
+  id?: string;
+  code?: string;
   name: string;
-  unit: string;
-  dataType: string;
-  category: string;
+  unit?: string;
+  dataType?: string;
+  category?: string;
   description?: string | null;
   active: boolean;
-  isDeleted: boolean;
+  isDeleted?: boolean;
   deletedAt?: string | null;
-};
+}
 
-export type MeasurementTypesListQuery = {
-  includeInactive?: boolean;
+export interface IMeasurementTypesFilter {
+  includeDeleted?: boolean;
   search?: string;
   code?: string;
   sortBy?: 'name' | 'category' | 'key' | 'description';
   sortDirection?: 'asc' | 'desc';
   page?: number;
   pageSize?: number;
-};
+}
 
-export type MeasurementTypesPageDto = {
-  items: MeasurementTypeDto[];
+export interface IMeasurementTypes {
+  items: IMeasurementType[];
   totalCount: number;
   page: number;
   pageSize: number;
-};
+}
 
-export type AssignableMeasurementTypeDto = {
+export interface IAssignableMeasurementType {
   id: string;
   key: string;
   name: string;
@@ -36,41 +36,31 @@ export type AssignableMeasurementTypeDto = {
   dataType: string;
   category: string;
   metrics: string[];
-};
+}
 
-export type ImportMeasurementTypeCsvRowRequest = {
+export interface IImportMeasurementTypeCsvRowRequest {
   key: string;
   name: string;
   unit: string;
   dataType: string;
   category: string;
   description?: string | null;
-};
+}
 
-export type ImportMeasurementTypesRequest = {
-  rows: ImportMeasurementTypeCsvRowRequest[];
-};
+export interface IImportMeasurementTypesRequest {
+  rows: IImportMeasurementTypeCsvRowRequest[];
+}
 
-export type ImportMeasurementTypeCsvRowResult = {
-  rowNumber: number;
-  key?: string | null;
-  created: boolean;
-  reason?: string | null;
-  measurementType?: MeasurementTypeDto | null;
-};
-
-export type ImportMeasurementTypesResult = {
+export interface IImportMeasurementTypesResult {
   totalRows: number;
   createdRows: number;
   rejectedRows: number;
-  rows: ImportMeasurementTypeCsvRowResult[];
-};
+  rows: Array<{
+    rowNumber: number;
+    key?: string | null;
+    created: boolean;
+    reason?: string | null;
+    measurementType?: IMeasurementType | null;
+  }>;
+}
 
-export type UpsertMeasurementTypeRequest = {
-  name: string;
-  key?: string;
-  unit?: string;
-  dataType?: string;
-  category?: string;
-  description?: string | null;
-};

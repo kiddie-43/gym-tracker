@@ -12,11 +12,11 @@ type MeasurementTypesFiltersDrawerProps = {
   open: boolean;
   searchInput: string;
   codeInput: string;
-  includeInactive: boolean;
+  includeDeleted: boolean;
   onClose: () => void;
   onSearchInputChange: (value: string) => void;
   onCodeInputChange: (value: string) => void;
-  onIncludeInactiveChange: (value: boolean) => void;
+  onIncludeDeletedChange: (value: boolean) => void;
   onApplySearch: () => void;
   onClearFilters: () => void;
 };
@@ -25,11 +25,11 @@ export function MeasurementTypesFiltersDrawer({
   open,
   searchInput,
   codeInput,
-  includeInactive,
+  includeDeleted,
   onClose,
   onSearchInputChange,
   onCodeInputChange,
-  onIncludeInactiveChange,
+  onIncludeDeletedChange,
   onApplySearch,
   onClearFilters,
 }: MeasurementTypesFiltersDrawerProps) {
@@ -86,7 +86,7 @@ export function MeasurementTypesFiltersDrawer({
             fullWidth
           />
           <FormControlLabel
-            control={<Checkbox checked={includeInactive} onChange={(_event, checked) => onIncludeInactiveChange(checked)} />}
+            control={<Checkbox checked={includeDeleted} onChange={(_event, checked) => onIncludeDeletedChange(checked)} />}
             label={t('administration.common.includeDeleted')}
           />
         </Stack>

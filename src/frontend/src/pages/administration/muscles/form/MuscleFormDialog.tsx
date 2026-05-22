@@ -54,7 +54,7 @@ export function MuscleFormDialog({
         />
         <TextField
           label={t('common.fields.description')}
-          value={formState.description}
+          value={formState.description ?? ''}
           onChange={(event) => onChange({ description: event.target.value })}
           fullWidth
         />

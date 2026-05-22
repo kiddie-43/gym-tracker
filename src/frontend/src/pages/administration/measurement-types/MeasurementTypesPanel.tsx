@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+﻿import { useEffect } from 'react';
 
 import FilterListRoundedIcon from '@mui/icons-material/FilterListRounded';
+import Badge from '@mui/material/Badge';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import CircularProgress from '@mui/material/CircularProgress';
@@ -8,212 +9,133 @@ import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import { useTranslation } from 'react-i18next';
 
-import type { ImportMeasurementTypeCsvRowRequest, ImportMeasurementTypesResult, MeasurementTypeDto, UpsertMeasurementTypeRequest } from '../../../interfaces/admin/measurementTypes/measurementTypes';
-import {
-  createMeasurementType,
-  deleteMeasurementType,
-  importMeasurementTypesCsv,
-  listMeasurementTypesPage,
-  reactivateMeasurementType,
-  updateMeasurementType,
-} from '../../../services/api/admin/measurementTypes/measurementTypesApi';
+import type { IImportMeasurementTypeCsvRowRequest, IMeasurementType } from '../../../interfaces/admin/measurementTypes/measurementTypes';
 import { FeedbackMessage } from '../../../components/FeedbackMessage/FeedbackMessage';
 import { PopupDialog } from '../../../components/PopupDialog/PopupDialog';
-import { MeasurementTypesCsvImportDialog } from './MeasurementTypesCsvImportDialog';
+import { useAppDispatch, useAppSelector } from '../../../redux/hooks';
+import {
+  deleteAdminMeasurementTypes,
+  fetchAdminMeasurementTypes,
+  importAdminMeasurementTypesCsv,
+  reactivateAdminMeasurementType,
+  submitAdminMeasurementTypeForm,
+} from '../../../redux/actions/adminMeasurementTypes/adminMeasurementTypesThunks';
+import {
+  setAdminMeasurementTypesFilters,
+  setAdminMeasurementTypesForm,
+  setAdminMeasurementTypesPopUpCode,
+  setAdminMeasurementTypesTable,
+} from '../../../redux/actions/adminMeasurementTypes/adminMeasurementTypesActions';
+import { adminMeasurementTypesInitialState, selectAdminMeasurementTypesState } from '../../../redux/states/adminMeasurementTypes/adminMeasurementTypesState';
 import { MeasurementTypesFiltersDrawer } from './filters/MeasurementTypesFiltersDrawer';
-import { defaultMeasurementTypeFormState, type MeasurementTypeFormState } from './form/measurementTypeForm';
 import { MeasurementTypeFormDialog } from './form/MeasurementTypeFormDialog';
+import { MeasurementTypesCsvImportDialog } from './MeasurementTypesCsvImportDialog';
 import { MeasurementTypesTable } from './table/MeasurementTypesTable';
 
 export function MeasurementTypesPanel({ supportsImport }: { supportsImport: boolean }) {
   const { t } = useTranslation();
-  const [rows, setRows] = useState<MeasurementTypeDto[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [includeInactive, setIncludeInactive] = useState(false);
-  const [search, setSearch] = useState('');
-  const [searchInput, setSearchInput] = useState('');
-  const [codeInput, setCodeInput] = useState('');
-  const [filtersOpen, setFiltersOpen] = useState(false);
-  const [sortBy, setSortBy] = useState<'name' | 'description'>('name');
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
-  const [page, setPage] = useState<number>(0);
-  const [rowsPerPage, setRowsPerPage] = useState<number>(10);
-  const [totalCount, setTotalCount] = useState<number>(0);
-  const [formOpen, setFormOpen] = useState(false);
-  const [formLoading, setFormLoading] = useState(false);
-  const [formError, setFormError] = useState<string | null>(null);
-  const [formState, setFormState] = useState<MeasurementTypeFormState>(defaultMeasurementTypeFormState);
+  const dispatch = useAppDispatch();
+  const {
+    table,
+    filters,
+    form,
+    loading,
+    error,
+    csvResult,
+    popUpCode,
+  } = useAppSelector(selectAdminMeasurementTypesState);
 
-  const [csvOpen, setCsvOpen] = useState(false);
-  const [csvLoading, setCsvLoading] = useState(false);
-  const [csvError, setCsvError] = useState<string | null>(null);
-  const [csvResult, setCsvResult] = useState<ImportMeasurementTypesResult | null>(null);
+  const { list: rows, selectedIds } = table;
 
-  const [selectedRowIds, setSelectedRowIds] = useState<string[]>([]);
-  const [deleteTargets, setDeleteTargets] = useState<MeasurementTypeDto[]>([]);
-  const [deleteLoading, setDeleteLoading] = useState(false);
-  const selectedRows = useMemo(
-    () => rows.filter((row) => selectedRowIds.includes(row.id) && !row.isDeleted),
-    [rows, selectedRowIds],
+  const hasActiveFilters = filters.search !== '' || filters.code !== '' || filters.includeDeleted;
+
+  const formOpen = popUpCode === 'CREATE' || popUpCode === 'EDIT';
+  const filtersOpen = popUpCode === 'FILTERS';
+  const deleteDialogOpen = popUpCode === 'DELETE';
+  const csvOpen = popUpCode === 'CSV_IMPORT';
+
+  const selectedRows = rows.filter((row): row is IMeasurementType & { id: string } =>
+    row.id !== undefined && selectedIds.includes(row.id) && !row.isDeleted
   );
 
-  const openDeleteDialog = (targets: MeasurementTypeDto[]) => {
-    const rowsToDelete = targets.filter((row) => !row.isDeleted);
-    if (rowsToDelete.length === 0) return;
-    setDeleteTargets(rowsToDelete);
-  };
-
-  const closeDeleteDialog = () => {
-    if (deleteLoading) return;
-    setDeleteTargets([]);
-  };
-
-  const handleDelete = async () => {
-    if (deleteTargets.length === 0) return;
-    setDeleteLoading(true);
-    setError(null);
-
-    try {
-      const results = await Promise.allSettled(deleteTargets.map((row) => deleteMeasurementType(row.id)));
-      const failedCount = results.filter((r) => r.status === 'rejected').length;
-
-      if (failedCount > 0) {
-        setError(t('administration.measurementTypes.bulkDeleteError', { failed: failedCount, total: deleteTargets.length }));
-      }
-
-      setDeleteTargets([]);
-      setSelectedRowIds([]);
-      await loadRows();
-    } catch (deleteError) {
-      const message = deleteError instanceof Error ? deleteError.message : t('administration.common.deleteError');
-      setError(message);
-    } finally {
-      setDeleteLoading(false);
-    }
-  };
-
-  const handleSortChange = (field: 'name' | 'description') => {
-    setPage(0);
-
-    if (sortBy === field) {
-      setSortDirection((current) => (current === 'asc' ? 'desc' : 'asc'));
-      return;
-    }
-
-    setSortBy(field);
-    setSortDirection('asc');
-  };
-
-
-
-
-  const loadRows = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      const data = await listMeasurementTypesPage({
-        includeInactive,
-        search: search || undefined,
-        sortBy,
-        sortDirection,
-        page: page + 1,
-        pageSize: rowsPerPage,
-      });
-      setRows(data.items);
-      setTotalCount(data.totalCount);
-    } catch (loadError) {
-      const message = loadError instanceof Error ? loadError.message : t('administration.common.loadError');
-      setError(message);
-    } finally {
-      setLoading(false);
-    }
-  }, [includeInactive, search, sortBy, sortDirection, page, rowsPerPage, t]);
+  useEffect(() => {
+    dispatch(setAdminMeasurementTypesTable(adminMeasurementTypesInitialState.table));
+    void dispatch(fetchAdminMeasurementTypes());
+  }, [dispatch]);
 
   useEffect(() => {
-    void loadRows();
-  }, [loadRows]);
-
-  const closeForm = () => {
-    if (formLoading) {
-      return;
+    const activeIds = new Set(rows.filter((row) => !row.isDeleted).map((row) => row.id));
+    const cleaned = selectedIds.filter((id) => activeIds.has(id));
+    if (cleaned.length !== selectedIds.length) {
+      dispatch(setAdminMeasurementTypesTable({ ...table, selectedIds: cleaned }));
     }
+  }, [rows]); // eslint-disable-line react-hooks/exhaustive-deps
 
-    setFormOpen(false);
-    setFormError(null);
-    setFormState(defaultMeasurementTypeFormState);
+  const handleSortChange = (field: 'name' | 'category' | 'key' | 'description') => {
+    const newDirection = table.sortBy === field && table.sortDirection === 'asc' ? 'desc' : 'asc';
+    dispatch(setAdminMeasurementTypesTable({ ...table, sortBy: field, sortDirection: newDirection, page: 0 }));
+    void dispatch(fetchAdminMeasurementTypes());
   };
 
   const openCreate = () => {
-    setFormState(defaultMeasurementTypeFormState);
-    setFormError(null);
-    setFormOpen(true);
+    dispatch(setAdminMeasurementTypesForm({ ...adminMeasurementTypesInitialState.form }));
+    dispatch(setAdminMeasurementTypesPopUpCode('CREATE'));
   };
 
-  const openEdit = (row: MeasurementTypeDto) => {
-    setFormState({
-      id: row.id,
-      code: row.key,
-      name: row.name,
-      category: row.category,
-      description: row.description ?? '',
-    });
-    setFormError(null);
-    setFormOpen(true);
+  const openEdit = (row: IMeasurementType) => {
+    dispatch(setAdminMeasurementTypesForm({ ...row }));
+    dispatch(setAdminMeasurementTypesPopUpCode('EDIT'));
+  };
+
+  const closeForm = () => {
+    if (loading) return;
+    dispatch(setAdminMeasurementTypesPopUpCode(null));
   };
 
   const submitForm = async () => {
-    setFormLoading(true);
-    setFormError(null);
-
-    const request: UpsertMeasurementTypeRequest = {
-      name: formState.name.trim(),
-      key: formState.code.trim() || undefined,
-      category: formState.category.trim() || undefined,
-      description: formState.description.trim() || undefined,
-    };
-
-    try {
-      if (formState.id) {
-        await updateMeasurementType(formState.id, request);
-      } else {
-        await createMeasurementType(request);
-      }
-
-      closeForm();
-      await loadRows();
-    } catch (submitError) {
-      const message = submitError instanceof Error ? submitError.message : t('administration.common.saveError');
-      setFormError(message);
-    } finally {
-      setFormLoading(false);
+    const result = await dispatch(submitAdminMeasurementTypeForm());
+    if (submitAdminMeasurementTypeForm.fulfilled.match(result)) {
+      dispatch(setAdminMeasurementTypesPopUpCode(null));
+      void dispatch(fetchAdminMeasurementTypes());
     }
   };
 
-  const onDelete = async (row: MeasurementTypeDto) => {
-    setError(null);
+  const openDeleteDialog = (targets: IMeasurementType[]) => {
+    const toDelete = targets.filter((row) => !row.isDeleted);
+    if (toDelete.length === 0) return;
+    dispatch(setAdminMeasurementTypesTable({
+      ...table,
+      selectedIds: toDelete.map((r) => r.id).filter((id): id is string => id !== undefined),
+    }));
+    dispatch(setAdminMeasurementTypesPopUpCode('DELETE'));
+  };
 
-    try {
-      await deleteMeasurementType(row.id);
-      await loadRows();
-    } catch (deleteError) {
-      const message = deleteError instanceof Error ? deleteError.message : t('administration.common.deleteError');
-      setError(message);
+  const closeDeleteDialog = () => {
+    if (loading) return;
+    dispatch(setAdminMeasurementTypesPopUpCode(null));
+  };
+
+  const handleDelete = async () => {
+    if (selectedIds.length === 0) return;
+    const result = await dispatch(deleteAdminMeasurementTypes(selectedIds));
+    if (deleteAdminMeasurementTypes.fulfilled.match(result)) {
+      dispatch(setAdminMeasurementTypesTable({ ...table, selectedIds: [] }));
+      dispatch(setAdminMeasurementTypesPopUpCode(null));
+      void dispatch(fetchAdminMeasurementTypes());
     }
   };
 
-  const onReactivate = async (row: MeasurementTypeDto) => {
-    setError(null);
+  const handleReactivate = async (row: IMeasurementType) => {
+    const result = await dispatch(reactivateAdminMeasurementType(row.id ?? ''));
+    if (reactivateAdminMeasurementType.fulfilled.match(result)) {
+      void dispatch(fetchAdminMeasurementTypes());
+    }
+  };
 
-    try {
-      await reactivateMeasurementType(row.id);
-      await loadRows();
-    } catch (reactivateError) {
-      const message = reactivateError instanceof Error
-        ? reactivateError.message
-        : t('administration.common.reactivateError');
-      setError(message);
+  const handleCsvImport = async (importRows: IImportMeasurementTypeCsvRowRequest[]) => {
+    const result = await dispatch(importAdminMeasurementTypesCsv({ rows: importRows }));
+    if (importAdminMeasurementTypesCsv.fulfilled.match(result)) {
+      void dispatch(fetchAdminMeasurementTypes());
     }
   };
 
@@ -223,8 +145,12 @@ export function MeasurementTypesPanel({ supportsImport }: { supportsImport: bool
         <Typography variant="h4">{t('administration.measurementTypes.title')}</Typography>
         <Button
           variant="outlined"
-          startIcon={<FilterListRoundedIcon />}
-          onClick={() => setFiltersOpen(true)}
+          startIcon={
+            <Badge variant="dot" color="primary" invisible={!hasActiveFilters}>
+              <FilterListRoundedIcon />
+            </Badge>
+          }
+          onClick={() => dispatch(setAdminMeasurementTypesPopUpCode('FILTERS'))}
         >
           {t('administration.common.filters')}
         </Button>
@@ -236,36 +162,37 @@ export function MeasurementTypesPanel({ supportsImport }: { supportsImport: bool
             {t('common.actions.deleteSelected')}
           </Button>
         ) : null}
-        <Button variant="outlined" onClick={() => void loadRows()}>
+        <Button variant="outlined" onClick={() => void dispatch(fetchAdminMeasurementTypes())}>
           {t('common.actions.reload')}
         </Button>
         {supportsImport ? (
-          <Button variant="outlined" onClick={() => setCsvOpen(true)}>
+          <Button variant="outlined" onClick={() => dispatch(setAdminMeasurementTypesPopUpCode('CSV_IMPORT'))}>
             {t('common.actions.import')}
           </Button>
         ) : null}
-        <Button variant="contained" onClick={openCreate}>{t('common.actions.create')}</Button>
+        <Button variant="contained" onClick={openCreate}>
+          {t('common.actions.create')}
+        </Button>
       </Stack>
 
       <MeasurementTypesFiltersDrawer
         open={filtersOpen}
-        searchInput={searchInput}
-        codeInput={codeInput}
-        includeInactive={includeInactive}
-        onClose={() => setFiltersOpen(false)}
-        onSearchInputChange={setSearchInput}
-        onCodeInputChange={setCodeInput}
-        onIncludeInactiveChange={setIncludeInactive}
+        searchInput={filters.search}
+        codeInput={filters.code}
+        includeDeleted={filters.includeDeleted}
+        onClose={() => dispatch(setAdminMeasurementTypesPopUpCode(null))}
+        onSearchInputChange={(val) => dispatch(setAdminMeasurementTypesFilters({ ...filters, search: val }))}
+        onCodeInputChange={(val) => dispatch(setAdminMeasurementTypesFilters({ ...filters, code: val }))}
+        onIncludeDeletedChange={(val) => dispatch(setAdminMeasurementTypesFilters({ ...filters, includeDeleted: val }))}
         onApplySearch={() => {
-          setSearch(searchInput);
-          setPage(0);
+          dispatch(setAdminMeasurementTypesTable({ ...table, page: 0 }));
+          dispatch(setAdminMeasurementTypesPopUpCode(null));
+          void dispatch(fetchAdminMeasurementTypes());
         }}
         onClearFilters={() => {
-          setSearchInput('');
-          setCodeInput('');
-          setSearch('');
-          setIncludeInactive(false);
-          setPage(0);
+          dispatch(setAdminMeasurementTypesFilters({ search: '', code: '', includeDeleted: false }));
+          dispatch(setAdminMeasurementTypesTable({ ...table, page: 0 }));
+          void dispatch(fetchAdminMeasurementTypes());
         }}
       />
 
@@ -287,84 +214,62 @@ export function MeasurementTypesPanel({ supportsImport }: { supportsImport: bool
         <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
           <MeasurementTypesTable
             rows={rows}
-            selectedIds={selectedRowIds}
-            sortBy={sortBy}
-            sortDirection={sortDirection}
+            selectedIds={selectedIds}
+            sortBy={table.sortBy}
+            sortDirection={table.sortDirection}
             onSortChange={handleSortChange}
-            page={page}
-            rowsPerPage={rowsPerPage}
-            totalCount={totalCount}
-            onPageChange={(_event, newPage) => setPage(newPage)}
+            page={table.page}
+            rowsPerPage={table.rowsPerPage}
+            totalCount={table.totalCount}
+            onPageChange={(_event, newPage) => {
+              dispatch(setAdminMeasurementTypesTable({ ...table, page: newPage }));
+              void dispatch(fetchAdminMeasurementTypes());
+            }}
             onRowsPerPageChange={(event) => {
-              setRowsPerPage(Number.parseInt(event.target.value, 10));
-              setPage(0);
+              dispatch(setAdminMeasurementTypesTable({ ...table, rowsPerPage: Number.parseInt(event.target.value, 10), page: 0 }));
+              void dispatch(fetchAdminMeasurementTypes());
             }}
-            onSelectionChange={setSelectedRowIds}
+            onSelectionChange={(ids) => dispatch(setAdminMeasurementTypesTable({ ...table, selectedIds: ids }))}
             onEdit={openEdit}
-            onDelete={(row) => {
-              openDeleteDialog([row]);
-            }}
-            onReactivate={(row) => {
-              void onReactivate(row);
-            }}
+            onDelete={(row) => openDeleteDialog([row])}
+            onReactivate={(row) => { void handleReactivate(row); }}
           />
         </Box>
       ) : null}
 
       <MeasurementTypeFormDialog
         open={formOpen}
-        loading={formLoading}
-        error={formError}
-        formState={formState}
+        loading={loading}
+        error={error}
+        formState={form}
         onClose={closeForm}
-        onSubmit={() => {
-          void submitForm();
-        }}
-        onChange={(patch) => {
-          setFormState((current) => ({ ...current, ...patch }));
-        }}
+        onSubmit={() => { void submitForm(); }}
+        onChange={(patch) => dispatch(setAdminMeasurementTypesForm({ ...form, ...patch }))}
       />
 
       <MeasurementTypesCsvImportDialog
         open={csvOpen}
-        loading={csvLoading}
-        error={csvError}
+        loading={loading}
+        error={error}
         result={csvResult}
         onClose={() => {
-          if (csvLoading) return;
-          setCsvOpen(false);
-          setCsvError(null);
-          setCsvResult(null);
+          if (loading) return;
+          dispatch(setAdminMeasurementTypesPopUpCode(null));
         }}
-        onImport={async (rows: ImportMeasurementTypeCsvRowRequest[]) => {
-          setCsvLoading(true);
-          setCsvError(null);
-          setCsvResult(null);
-
-          try {
-            const result = await importMeasurementTypesCsv({ rows });
-            setCsvResult(result);
-            await loadRows();
-          } catch (importError) {
-            const message = importError instanceof Error ? importError.message : t('administration.measurementTypes.csv.importError');
-            setCsvError(message);
-          } finally {
-            setCsvLoading(false);
-          }
-        }}
+        onImport={handleCsvImport}
       />
 
       <PopupDialog
-        open={deleteTargets.length > 0}
+        open={deleteDialogOpen}
         title={t('common.messages.confirmDelete')}
         onClose={closeDeleteDialog}
         onSubmit={() => { void handleDelete(); }}
         closeLabel={t('common.actions.cancel')}
         saveLabel={t('common.actions.delete')}
-        isSaving={deleteLoading}
+        isSaving={loading}
       >
         <Typography>
-          {t('administration.measurementTypes.deleteManyWarning', { count: deleteTargets.length })}
+          {t('administration.measurementTypes.deleteManyWarning', { count: selectedIds.length })}
         </Typography>
       </PopupDialog>
     </Stack>

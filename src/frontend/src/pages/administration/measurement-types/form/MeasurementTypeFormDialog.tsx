@@ -40,7 +40,7 @@ export function MeasurementTypeFormDialog({
       <Stack spacing={2} sx={{ mt: 1 }}>
         <TextField
           label={t('common.fields.code')}
-          value={formState.code}
+          value={formState.code ?? ''}
           onChange={(event) => onChange({ code: event.target.value })}
           fullWidth
         />
@@ -52,7 +52,7 @@ export function MeasurementTypeFormDialog({
         />
         <TextField
           label={t('administration.measurementTypes.fields.description')}
-          value={formState.description}
+          value={formState.description ?? ''}
           onChange={(event) => onChange({ description: event.target.value })}
           multiline
           minRows={2}

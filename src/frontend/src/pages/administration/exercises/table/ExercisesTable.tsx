@@ -21,10 +21,10 @@ import TableRow from '@mui/material/TableRow';
 import { useTranslation } from 'react-i18next';
 
 import { DataTable } from '../../../../components/DataTable/DataTable';
-import type { ExerciseDto } from '../../../../interfaces/admin/exercises/exercises';
+import type { IExercise } from '../../../../interfaces/admin/exercises/exercises';
 
 type ExercisesTableProps = {
-  rows: ExerciseDto[];
+  rows: IExercise[];
   selectedIds: string[];
   sortBy: 'code' | 'name' | 'category' | 'difficulty';
   sortDirection: 'asc' | 'desc';
@@ -35,9 +35,9 @@ type ExercisesTableProps = {
   onPageChange: (_event: unknown, newPage: number) => void;
   onRowsPerPageChange: (event: ChangeEvent<HTMLInputElement>) => void;
   onSelectionChange: (ids: string[]) => void;
-  onEdit: (row: ExerciseDto) => void;
-  onDelete: (row: ExerciseDto) => void;
-  onReactivate: (row: ExerciseDto) => void;
+  onEdit: (row: IExercise) => void;
+  onDelete: (row: IExercise) => void;
+  onReactivate: (row: IExercise) => void;
 };
 
 export function ExercisesTable({
@@ -60,7 +60,9 @@ export function ExercisesTable({
   const [menuAnchorEl, setMenuAnchorEl] = useState<HTMLElement | null>(null);
   const [menuRowId, setMenuRowId] = useState<string | null>(null);
 
-  const activeRowIds = rows.filter((row) => !row.isDeleted).map((row) => row.id);
+  const activeRowIds = rows
+    .filter((row): row is IExercise & { id: string } => !row.isDeleted && row.id !== undefined)
+    .map((row) => row.id);
   const selectedActiveCount = activeRowIds.filter((id) => selectedIds.includes(id)).length;
   const allActiveSelected = activeRowIds.length > 0 && selectedActiveCount === activeRowIds.length;
   const someActiveSelected = selectedActiveCount > 0 && !allActiveSelected;
@@ -154,12 +156,12 @@ export function ExercisesTable({
         body={(
           <>
             {rows.map((row) => (
-              <TableRow key={row.id}>
+              <TableRow key={row.id ?? row.code ?? row.name}>
                 <TableCell padding="checkbox">
                   <Checkbox
-                    checked={selectedIds.includes(row.id)}
+                    checked={row.id !== undefined && selectedIds.includes(row.id)}
                     disabled={row.isDeleted}
-                    onChange={(_event, checked) => toggleSelectRow(row.id, checked)}
+                    onChange={(_event, checked) => { if (row.id) toggleSelectRow(row.id, checked); }}
                     inputProps={{ 'aria-label': t('administration.exercises.selectRow', { code: row.code }) }}
                   />
                 </TableCell>
@@ -182,7 +184,7 @@ export function ExercisesTable({
                   <IconButton
                     size="small"
                     aria-label={t('administration.common.actionsMenu')}
-                    onClick={(event) => openMenu(event, row.id)}
+                    onClick={(event) => { if (row.id) openMenu(event, row.id); }}
                   >
                     <MoreVertRoundedIcon fontSize="small" />
                   </IconButton>

@@ -9,7 +9,6 @@ export {
 } from './muscles/musclesApi';
 
 export {
-  listMeasurementTypes,
   createMeasurementType,
   updateMeasurementType,
   deleteMeasurementType,

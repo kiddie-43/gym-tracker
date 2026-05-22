@@ -1,15 +1,3 @@
-export type MeasurementTypeFormState = {
-  id: string | null;
-  code: string;
-  name: string;
-  category: string;
-  description: string;
-};
+import type { IMeasurementType } from '../../../../interfaces/admin/measurementTypes/measurementTypes';
 
-export const defaultMeasurementTypeFormState: MeasurementTypeFormState = {
-  id: null,
-  code: '',
-  name: '',
-  category: 'general',
-  description: '',
-};
+export type MeasurementTypeFormState = IMeasurementType;

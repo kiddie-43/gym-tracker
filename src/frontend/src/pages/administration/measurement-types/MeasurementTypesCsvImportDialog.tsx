@@ -13,21 +13,21 @@ import Typography from '@mui/material/Typography';
 import { useTranslation } from 'react-i18next';
 
 import type {
-  ImportMeasurementTypeCsvRowRequest,
-  ImportMeasurementTypesResult,
+  IImportMeasurementTypeCsvRowRequest,
+  IImportMeasurementTypesResult,
 } from '../../../interfaces/admin/measurementTypes/measurementTypes';
 import { PopupDialog } from '../../../components/PopupDialog/PopupDialog';
 
 export interface MeasurementTypesCsvImportDialogProps {
   open: boolean;
   loading: boolean;
-  result: ImportMeasurementTypesResult | null;
+  result: IImportMeasurementTypesResult | null;
   error: string | null;
   onClose: () => void;
-  onImport: (rows: ImportMeasurementTypeCsvRowRequest[]) => Promise<void>;
+  onImport: (rows: IImportMeasurementTypeCsvRowRequest[]) => Promise<void>;
 }
 
-function parseCsvRows(raw: string): ImportMeasurementTypeCsvRowRequest[] {
+function parseCsvRows(raw: string): IImportMeasurementTypeCsvRowRequest[] {
   const lines = raw
     .split(/\r?\n/)
     .map((line) => line.trim())

@@ -1,13 +1,3 @@
-export type MuscleFormState = {
-  id: string | null;
-  name: string;
-  code: string;
-  description: string;
-};
+import type { IMuscle } from '../../../../interfaces/muscles/IMuscles';
 
-export const defaultMuscleFormState: MuscleFormState = {
-  id: null,
-  name: '',
-  code: '',
-  description: '',
-};
+export type MuscleFormState = IMuscle;

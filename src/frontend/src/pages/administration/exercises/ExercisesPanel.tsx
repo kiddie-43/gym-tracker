@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+﻿import { useEffect } from 'react';
 
 import FilterListRoundedIcon from '@mui/icons-material/FilterListRounded';
+import Badge from '@mui/material/Badge';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import CircularProgress from '@mui/material/CircularProgress';
@@ -8,276 +9,138 @@ import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import { useTranslation } from 'react-i18next';
 
-import type { ExerciseDto, ImportExerciseCsvRowRequest, ImportExercisesResult, UpsertExerciseRequest } from '../../../interfaces/admin/exercises/exercises';
-import type { MeasurementTypeDto } from '../../../interfaces/admin/measurementTypes/measurementTypes';
-import type { MuscleDto } from '../../../interfaces/admin/muscles/muscles';
-import {
-  createExercise,
-  deleteExercise,
-  importExercisesCsv,
-  listExercisesPage,
-  reactivateExercise,
-  updateExercise,
-} from '../../../services/api/admin/exercises/exercisesApi';
-import { listMeasurementTypesPage } from '../../../services/api/admin/measurementTypes/measurementTypesApi';
-import { listMusclesPage } from '../../../services/api/admin/muscles/musclesApi';
+import type { IExercise, IImportExerciseCsvRowRequest } from '../../../interfaces/admin/exercises/exercises';
 import { FeedbackMessage } from '../../../components/FeedbackMessage/FeedbackMessage';
 import { PopupDialog } from '../../../components/PopupDialog/PopupDialog';
+import { useAppDispatch, useAppSelector } from '../../../redux/hooks';
+import {
+  setAdminExercisesCsvResult,
+  setAdminExercisesError,
+  setAdminExercisesFilters,
+  setAdminExercisesForm,
+  setAdminExercisesPopUpCode,
+  setAdminExercisesTable,
+} from '../../../redux/actions/adminExercises/adminExercisesActions';
+import {
+  deleteAdminExercises,
+  fetchAdminExercises,
+  importAdminExercisesCsv,
+  loadAdminExercisesReferenceData,
+  reactivateAdminExercise,
+  submitAdminExerciseForm,
+} from '../../../redux/actions/adminExercises/adminExercisesThunks';
+import {
+  adminExercisesInitialState,
+  selectAdminExercisesState,
+} from '../../../redux/states/adminExercises/adminExercisesState';
 import { ExercisesCsvImportDialog } from './ExercisesCsvImportDialog';
 import { ExerciseFormDialog } from './form/ExerciseFormDialog';
-import { defaultExerciseFormState, type ExerciseFormState } from './form/exerciseForm';
 import { ExercisesFiltersDrawer } from './filters/ExercisesFiltersDrawer';
 import { ExercisesTable } from './table/ExercisesTable';
 
 export function ExercisesPanel({ supportsImport }: { supportsImport: boolean }) {
   const { t } = useTranslation();
-  const [rows, setRows] = useState<ExerciseDto[]>([]);
-  const [muscles, setMuscles] = useState<MuscleDto[]>([]);
-  const [measurementTypes, setMeasurementTypes] = useState<MeasurementTypeDto[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [includeDeleted, setIncludeDeleted] = useState(false);
-  const [searchInput, setSearchInput] = useState('');
-  const [selectedDifficulties, setSelectedDifficulties] = useState<string[]>([]);
-  const [selectedMeasurementTypeIds, setSelectedMeasurementTypeIds] = useState<string[]>([]);
-  const [selectedPrimaryMuscleIds, setSelectedPrimaryMuscleIds] = useState<string[]>([]);
-  const [selectedSecondaryMuscleIds, setSelectedSecondaryMuscleIds] = useState<string[]>([]);
-  const [appliedFilters, setAppliedFilters] = useState({
-    search: '',
-    difficulties: [] as string[],
-    measurementTypeIds: [] as string[],
-    primaryMuscleIds: [] as string[],
-    secondaryMuscleIds: [] as string[],
-  });
-  const [totalCount, setTotalCount] = useState<number>(0);
-  const [filtersOpen, setFiltersOpen] = useState(false);
-  const [sortBy, setSortBy] = useState<'code' | 'name' | 'category' | 'difficulty'>('name');
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
-  const [page, setPage] = useState<number>(0);
-  const [rowsPerPage, setRowsPerPage] = useState<number>(10);
+  const dispatch = useAppDispatch();
+  const {
+    table,
+    filters,
+    form,
+    csvResult,
+    referenceMuscles,
+    referenceMeasurementTypes,
+    loading,
+    error,
+    popUpCode,
+  } = useAppSelector(selectAdminExercisesState);
 
-  const [formOpen, setFormOpen] = useState(false);
-  const [formLoading, setFormLoading] = useState(false);
-  const [formError, setFormError] = useState<string | null>(null);
-  const [formState, setFormState] = useState<ExerciseFormState>(defaultExerciseFormState);
+  const { list: rows, page, rowsPerPage, totalCount, sortBy, sortDirection, selectedIds } = table;
 
-  const [csvOpen, setCsvOpen] = useState(false);
-  const [csvLoading, setCsvLoading] = useState(false);
-  const [csvError, setCsvError] = useState<string | null>(null);
-  const [csvResult, setCsvResult] = useState<ImportExercisesResult | null>(null);
+  const hasActiveFilters =
+    filters.search !== '' ||
+    filters.includeDeleted ||
+    filters.difficulties.length > 0 ||
+    filters.measurementTypeIds.length > 0 ||
+    filters.primaryMuscleIds.length > 0 ||
+    filters.secondaryMuscleIds.length > 0;
 
-  const [selectedRowIds, setSelectedRowIds] = useState<string[]>([]);
-  const [deleteTargets, setDeleteTargets] = useState<ExerciseDto[]>([]);
-  const [deleteLoading, setDeleteLoading] = useState(false);
+  const formOpen = popUpCode === 'CREATE' || popUpCode === 'EDIT';
+  const filtersOpen = popUpCode === 'FILTERS';
+  const deleteDialogOpen = popUpCode === 'DELETE';
+  const csvOpen = popUpCode === 'CSV_IMPORT';
 
-  const referenceMuscles = muscles.filter((item) => !item.isDeleted);
-  const referenceMeasurementTypes = measurementTypes.filter((item) => !item.isDeleted);
-  const selectedRows = useMemo(
-    () => rows.filter((row) => selectedRowIds.includes(row.id) && !row.isDeleted),
-    [rows, selectedRowIds],
+  const referenceMusclesActive = referenceMuscles.filter((m) => !m.isDeleted);
+  const referenceMeasurementTypesActive = referenceMeasurementTypes.filter((m) => !m.isDeleted);
+
+  const selectedRows = rows.filter(
+    (row): row is IExercise & { id: string } =>
+      row.id !== undefined && selectedIds.includes(row.id) && !row.isDeleted,
   );
 
-  const openDeleteDialog = (targets: ExerciseDto[]) => {
-    const rowsToDelete = targets.filter((row) => !row.isDeleted);
-    if (rowsToDelete.length === 0) return;
-    setDeleteTargets(rowsToDelete);
-  };
+  useEffect(() => {
+    dispatch(setAdminExercisesTable(adminExercisesInitialState.table));
+    void dispatch(fetchAdminExercises());
+  }, [dispatch]);
 
-  const closeDeleteDialog = () => {
-    if (deleteLoading) return;
-    setDeleteTargets([]);
-  };
-
-  const handleDelete = async () => {
-    if (deleteTargets.length === 0) return;
-    setDeleteLoading(true);
-    setError(null);
-
-    try {
-      const results = await Promise.allSettled(deleteTargets.map((row) => deleteExercise(row.id)));
-      const failedCount = results.filter((r) => r.status === 'rejected').length;
-
-      if (failedCount > 0) {
-        setError(t('administration.exercises.bulkDeleteError', { failed: failedCount, total: deleteTargets.length }));
-      }
-
-      setDeleteTargets([]);
-      setSelectedRowIds([]);
-      await loadRows();
-    } catch (deleteError) {
-      const message = deleteError instanceof Error ? deleteError.message : t('administration.common.deleteError');
-      setError(message);
-    } finally {
-      setDeleteLoading(false);
-    }
-  };
+  useEffect(() => {
+    void dispatch(loadAdminExercisesReferenceData());
+  }, [dispatch]);
 
   const handleSortChange = (field: 'code' | 'name' | 'category' | 'difficulty') => {
-    setPage(0);
-
-    if (sortBy === field) {
-      setSortDirection((current) => (current === 'asc' ? 'desc' : 'asc'));
-      return;
-    }
-
-    setSortBy(field);
-    setSortDirection('asc');
+    const newDirection = table.sortBy === field && table.sortDirection === 'asc' ? 'desc' : 'asc';
+    dispatch(setAdminExercisesTable({ ...table, sortBy: field, sortDirection: newDirection, page: 0 }));
+    void dispatch(fetchAdminExercises());
   };
-
-  const loadRows = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      const data = await listExercisesPage({
-        includeDeleted,
-        search: appliedFilters.search || undefined,
-        difficulties: appliedFilters.difficulties.length > 0 ? appliedFilters.difficulties : undefined,
-        measurementTypeIds: appliedFilters.measurementTypeIds.length > 0 ? appliedFilters.measurementTypeIds : undefined,
-        primaryMuscleIds: appliedFilters.primaryMuscleIds.length > 0 ? appliedFilters.primaryMuscleIds : undefined,
-        secondaryMuscleIds: appliedFilters.secondaryMuscleIds.length > 0 ? appliedFilters.secondaryMuscleIds : undefined,
-        sortBy,
-        sortDirection,
-        page: page + 1,
-        pageSize: rowsPerPage,
-      });
-      setRows(data.items);
-      setTotalCount(data.totalCount);
-    } catch (loadError) {
-      const message = loadError instanceof Error ? loadError.message : t('administration.common.loadError');
-      setError(message);
-    } finally {
-      setLoading(false);
-    }
-  }, [includeDeleted, appliedFilters, sortBy, sortDirection, page, rowsPerPage, t]);
-
-  useEffect(() => {
-    void (async () => {
-      try {
-        const [muscleRows, measurementRows] = await Promise.all([
-          listMusclesPage({ includeDeleted: true, pageSize: 1000 }).then(p => p.items),
-          listMeasurementTypesPage({ includeInactive: true, pageSize: 1000 }).then(p => p.items),
-        ]);
-        setMuscles(muscleRows);
-        setMeasurementTypes(measurementRows);
-      } catch {
-        // reference data errors are non-critical
-      }
-    })();
-  }, []);
-
-  useEffect(() => {
-    void loadRows();
-  }, [loadRows]);
 
   const openCreate = () => {
-    setFormState((current) => ({
-      ...defaultExerciseFormState,
-      measurementTypeIds: referenceMeasurementTypes[0]?.id ? [referenceMeasurementTypes[0].id] : [],
-      primaryMuscleIds: referenceMuscles[0]?.id ? [referenceMuscles[0].id] : [],
-      secondaryMuscleIds: [],
-      category: current.category,
-      difficulty: current.difficulty,
-    }));
-    setFormError(null);
-    setFormOpen(true);
+    dispatch(setAdminExercisesForm({ ...adminExercisesInitialState.form }));
+    dispatch(setAdminExercisesError(null));
+    dispatch(setAdminExercisesPopUpCode('CREATE'));
   };
 
-  const openEdit = (row: ExerciseDto) => {
-    setFormState({
-      id: row.id,
-      name: row.name,
-      code: row.code,
-      description: row.description ?? '',
-      category: row.category,
-      difficulty: row.difficulty,
-      measurementTypeIds: row.measurementTypeId ? [row.measurementTypeId] : [],
-      primaryMuscleIds: row.primaryMuscles.map(m => m.id),
-      secondaryMuscleIds: row.secondaryMuscles.map(m => m.id),
-    });
-    setFormError(null);
-    setFormOpen(true);
+  const openEdit = (row: IExercise) => {
+    dispatch(setAdminExercisesForm({ ...row }));
+    dispatch(setAdminExercisesError(null));
+    dispatch(setAdminExercisesPopUpCode('EDIT'));
   };
 
   const closeForm = () => {
-    if (formLoading) {
-      return;
-    }
-
-    setFormOpen(false);
-    setFormError(null);
-    setFormState(defaultExerciseFormState);
+    dispatch(setAdminExercisesPopUpCode(null));
+    dispatch(setAdminExercisesError(null));
   };
 
   const submitForm = async () => {
-    setFormLoading(true);
-    setFormError(null);
-
-    const request: UpsertExerciseRequest = {
-      name: formState.name.trim(),
-      code: formState.code.trim(),
-      description: formState.description.trim() || null,
-      category: formState.category,
-      difficulty: formState.difficulty,
-      measurementTypeId: formState.measurementTypeIds[0] ?? '',
-      primaryMuscleIds: formState.primaryMuscleIds,
-      secondaryMuscleIds: formState.secondaryMuscleIds,
-      images: [],
-      videos: [],
-    };
-
-    try {
-      if (formState.id) {
-        await updateExercise(formState.id, request);
-      } else {
-        await createExercise(request);
-      }
-
+    const result = await dispatch(submitAdminExerciseForm());
+    if (submitAdminExerciseForm.fulfilled.match(result)) {
       closeForm();
-      await loadRows();
-    } catch (submitError) {
-      const message = submitError instanceof Error ? submitError.message : t('administration.common.saveError');
-      setFormError(message);
-    } finally {
-      setFormLoading(false);
+      void dispatch(fetchAdminExercises());
     }
   };
 
+  const openDeleteDialog = (targets: (IExercise & { id: string })[]) => {
+    dispatch(setAdminExercisesTable({ ...table, selectedIds: targets.map((row) => row.id) }));
+    dispatch(setAdminExercisesPopUpCode('DELETE'));
+  };
 
-
-  const onReactivate = async (row: ExerciseDto) => {
-    setError(null);
-
-    try {
-      await reactivateExercise(row.id);
-      await loadRows();
-    } catch (reactivateError) {
-      const message = reactivateError instanceof Error
-        ? reactivateError.message
-        : t('administration.common.reactivateError');
-      setError(message);
+  const handleDelete = async () => {
+    const result = await dispatch(deleteAdminExercises(selectedRows.map((row) => row.id)));
+    if (deleteAdminExercises.fulfilled.match(result)) {
+      dispatch(setAdminExercisesTable({ ...table, selectedIds: [] }));
+      dispatch(setAdminExercisesPopUpCode(null));
+      void dispatch(fetchAdminExercises());
     }
   };
 
-  const updateFormState = (patch: Partial<ExerciseFormState>) => {
-    setFormState((current) => ({ ...current, ...patch }));
+  const handleReactivate = async (row: IExercise) => {
+    if (!row.id) return;
+    const result = await dispatch(reactivateAdminExercise(row.id));
+    if (reactivateAdminExercise.fulfilled.match(result)) {
+      void dispatch(fetchAdminExercises());
+    }
   };
 
-  const handleCsvImport = async (rows: ImportExerciseCsvRowRequest[]) => {
-    setCsvLoading(true);
-    setCsvError(null);
-    setCsvResult(null);
-
-    try {
-      const result = await importExercisesCsv({ rows });
-      setCsvResult(result);
-      await loadRows();
-    } catch (importError) {
-      const message = importError instanceof Error ? importError.message : t('administration.exercises.csv.importError');
-      setCsvError(message);
-    } finally {
-      setCsvLoading(false);
-    }
+  const handleCsvImport = async (importRows: IImportExerciseCsvRowRequest[]) => {
+    await dispatch(importAdminExercisesCsv(importRows));
+    void dispatch(fetchAdminExercises());
   };
 
   return (
@@ -286,8 +149,12 @@ export function ExercisesPanel({ supportsImport }: { supportsImport: boolean }) 
         <Typography variant="h4">{t('administration.exercises.title')}</Typography>
         <Button
           variant="outlined"
-          startIcon={<FilterListRoundedIcon />}
-          onClick={() => setFiltersOpen(true)}
+          startIcon={
+            <Badge variant="dot" color="primary" invisible={!hasActiveFilters}>
+              <FilterListRoundedIcon />
+            </Badge>
+          }
+          onClick={() => dispatch(setAdminExercisesPopUpCode('FILTERS'))}
         >
           {t('administration.common.filters')}
         </Button>
@@ -299,11 +166,11 @@ export function ExercisesPanel({ supportsImport }: { supportsImport: boolean }) 
             {t('common.actions.deleteSelected')}
           </Button>
         ) : null}
-        <Button variant="outlined" onClick={() => void loadRows()}>
+        <Button variant="outlined" onClick={() => void dispatch(fetchAdminExercises())}>
           {t('common.actions.reload')}
         </Button>
         {supportsImport ? (
-          <Button variant="outlined" onClick={() => setCsvOpen(true)}>
+          <Button variant="outlined" onClick={() => dispatch(setAdminExercisesPopUpCode('CSV_IMPORT'))}>
             {t('common.actions.import')}
           </Button>
         ) : null}
@@ -312,47 +179,31 @@ export function ExercisesPanel({ supportsImport }: { supportsImport: boolean }) 
 
       <ExercisesFiltersDrawer
         open={filtersOpen}
-        searchInput={searchInput}
-        includeDeleted={includeDeleted}
-        selectedDifficulties={selectedDifficulties}
-        selectedMeasurementTypeIds={selectedMeasurementTypeIds}
-        selectedPrimaryMuscleIds={selectedPrimaryMuscleIds}
-        selectedSecondaryMuscleIds={selectedSecondaryMuscleIds}
+        searchInput={filters.search}
+        includeDeleted={filters.includeDeleted}
+        selectedDifficulties={filters.difficulties}
+        selectedMeasurementTypeIds={filters.measurementTypeIds}
+        selectedPrimaryMuscleIds={filters.primaryMuscleIds}
+        selectedSecondaryMuscleIds={filters.secondaryMuscleIds}
         difficultyOptions={['Beginner', 'Intermediate', 'Advanced']}
-        measurementTypeOptions={referenceMeasurementTypes}
-        muscleOptions={referenceMuscles}
-        onClose={() => setFiltersOpen(false)}
-        onSearchInputChange={setSearchInput}
-        onIncludeDeletedChange={setIncludeDeleted}
-        onSelectedDifficultiesChange={setSelectedDifficulties}
-        onSelectedMeasurementTypeIdsChange={setSelectedMeasurementTypeIds}
-        onSelectedPrimaryMuscleIdsChange={setSelectedPrimaryMuscleIds}
-        onSelectedSecondaryMuscleIdsChange={setSelectedSecondaryMuscleIds}
+        measurementTypeOptions={referenceMeasurementTypesActive}
+        muscleOptions={referenceMusclesActive}
+        onClose={() => dispatch(setAdminExercisesPopUpCode(null))}
+        onSearchInputChange={(v) => dispatch(setAdminExercisesFilters({ ...filters, search: v }))}
+        onIncludeDeletedChange={(v) => dispatch(setAdminExercisesFilters({ ...filters, includeDeleted: v }))}
+        onSelectedDifficultiesChange={(v) => dispatch(setAdminExercisesFilters({ ...filters, difficulties: v }))}
+        onSelectedMeasurementTypeIdsChange={(v) => dispatch(setAdminExercisesFilters({ ...filters, measurementTypeIds: v }))}
+        onSelectedPrimaryMuscleIdsChange={(v) => dispatch(setAdminExercisesFilters({ ...filters, primaryMuscleIds: v }))}
+        onSelectedSecondaryMuscleIdsChange={(v) => dispatch(setAdminExercisesFilters({ ...filters, secondaryMuscleIds: v }))}
         onApplySearch={() => {
-          setAppliedFilters({
-            search: searchInput,
-            difficulties: selectedDifficulties,
-            measurementTypeIds: selectedMeasurementTypeIds,
-            primaryMuscleIds: selectedPrimaryMuscleIds,
-            secondaryMuscleIds: selectedSecondaryMuscleIds,
-          });
-          setPage(0);
+          dispatch(setAdminExercisesTable({ ...table, page: 0 }));
+          void dispatch(fetchAdminExercises());
+          dispatch(setAdminExercisesPopUpCode(null));
         }}
         onClearFilters={() => {
-          setSearchInput('');
-          setIncludeDeleted(false);
-          setSelectedDifficulties([]);
-          setSelectedMeasurementTypeIds([]);
-          setSelectedPrimaryMuscleIds([]);
-          setSelectedSecondaryMuscleIds([]);
-          setAppliedFilters({
-            search: '',
-            difficulties: [],
-            measurementTypeIds: [],
-            primaryMuscleIds: [],
-            secondaryMuscleIds: [],
-          });
-          setPage(0);
+          dispatch(setAdminExercisesFilters(adminExercisesInitialState.filters));
+          dispatch(setAdminExercisesTable({ ...table, page: 0 }));
+          void dispatch(fetchAdminExercises());
         }}
       />
 
@@ -374,63 +225,69 @@ export function ExercisesPanel({ supportsImport }: { supportsImport: boolean }) 
         <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
           <ExercisesTable
             rows={rows}
-            selectedIds={selectedRowIds}
+            selectedIds={selectedIds}
             sortBy={sortBy}
             sortDirection={sortDirection}
             onSortChange={handleSortChange}
             page={page}
             rowsPerPage={rowsPerPage}
             totalCount={totalCount}
-            onPageChange={(_event, newPage) => setPage(newPage)}
-            onRowsPerPageChange={(event) => {
-              setRowsPerPage(Number.parseInt(event.target.value, 10));
-              setPage(0);
+            onPageChange={(_event, newPage) => {
+              dispatch(setAdminExercisesTable({ ...table, page: newPage }));
+              void dispatch(fetchAdminExercises());
             }}
-            onSelectionChange={setSelectedRowIds}
+            onRowsPerPageChange={(event) => {
+              dispatch(setAdminExercisesTable({
+                ...table,
+                rowsPerPage: Number.parseInt(event.target.value, 10),
+                page: 0,
+              }));
+              void dispatch(fetchAdminExercises());
+            }}
+            onSelectionChange={(ids) => dispatch(setAdminExercisesTable({ ...table, selectedIds: ids }))}
             onEdit={openEdit}
-            onDelete={(row) => openDeleteDialog([row])}
-            onReactivate={(row) => void onReactivate(row)}
+            onDelete={(row) => { if (row.id) openDeleteDialog([row as IExercise & { id: string }]); }}
+            onReactivate={(row) => void handleReactivate(row)}
           />
         </Box>
       ) : null}
 
       <ExerciseFormDialog
         open={formOpen}
-        loading={formLoading}
-        error={formError}
-        formState={formState}
-        referenceMeasurementTypes={referenceMeasurementTypes}
-        referenceMuscles={referenceMuscles}
+        loading={loading}
+        error={error}
+        formState={form}
+        referenceMeasurementTypes={referenceMeasurementTypesActive}
+        referenceMuscles={referenceMusclesActive}
         onClose={closeForm}
-        onSubmit={() => void submitForm()}
-        onChange={updateFormState}
+        onSubmit={() => { void submitForm(); }}
+        onChange={(patch) => dispatch(setAdminExercisesForm({ ...form, ...patch }))}
       />
 
       <ExercisesCsvImportDialog
         open={csvOpen}
-        loading={csvLoading}
-        error={csvError}
+        loading={loading}
+        error={error}
         result={csvResult}
         onClose={() => {
-          if (csvLoading) return;
-          setCsvOpen(false);
-          setCsvError(null);
-          setCsvResult(null);
+          dispatch(setAdminExercisesPopUpCode(null));
+          dispatch(setAdminExercisesError(null));
+          dispatch(setAdminExercisesCsvResult(null));
         }}
         onImport={handleCsvImport}
       />
 
       <PopupDialog
-        open={deleteTargets.length > 0}
+        open={deleteDialogOpen}
         title={t('common.messages.confirmDelete')}
-        onClose={closeDeleteDialog}
+        onClose={() => dispatch(setAdminExercisesPopUpCode(null))}
         onSubmit={() => { void handleDelete(); }}
         closeLabel={t('common.actions.cancel')}
         saveLabel={t('common.actions.delete')}
-        isSaving={deleteLoading}
+        isSaving={loading}
       >
         <Typography>
-          {t('administration.exercises.deleteManyWarning', { count: deleteTargets.length })}
+          {t('administration.exercises.deleteManyWarning', { count: selectedRows.length })}
         </Typography>
       </PopupDialog>
     </Stack>

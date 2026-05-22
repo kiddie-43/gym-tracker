@@ -1,5 +1,17 @@
-import type { ExerciseDto } from '../../../interfaces/admin/exercises/exercises';
+import type { IExercise, IImportExercisesResult } from '../../../interfaces/admin/exercises/exercises';
+import type { IMeasurementType } from '../../../interfaces/admin/measurementTypes/measurementTypes';
+import type { IMuscle } from '../../../interfaces/muscles/IMuscles';
 import type { RootState } from '../../store';
+
+export type AdminExercisesTable = {
+  list: IExercise[];
+  page: number;
+  rowsPerPage: number;
+  totalCount: number;
+  sortBy: 'code' | 'name' | 'category' | 'difficulty';
+  sortDirection: 'asc' | 'desc';
+  selectedIds: string[];
+};
 
 export type AdminExercisesFilters = {
   search: string;
@@ -8,40 +20,30 @@ export type AdminExercisesFilters = {
   measurementTypeIds: string[];
   primaryMuscleIds: string[];
   secondaryMuscleIds: string[];
-  sortBy: 'code' | 'name' | 'category' | 'difficulty';
-  sortDirection: 'asc' | 'desc';
-};
-
-export type AdminExercisesPagination = {
-  page: number;
-  rowsPerPage: number;
-  totalCount: number;
-};
-
-export type AdminExercisesFormState = {
-  id: string | null;
-  name: string;
-  code: string;
-  description: string;
-  category: string;
-  difficulty: string;
-  measurementTypeIds: string[];
-  primaryMuscleIds: string[];
-  secondaryMuscleIds: string[];
 };
 
 export type AdminExercisesState = {
-  list: ExerciseDto[];
+  table: AdminExercisesTable;
   filters: AdminExercisesFilters;
-  pagination: AdminExercisesPagination;
-  form: AdminExercisesFormState;
+  form: IExercise;
+  csvResult: IImportExercisesResult | null;
+  referenceMuscles: IMuscle[];
+  referenceMeasurementTypes: IMeasurementType[];
   error: string | null;
   loading: boolean;
   popUpCode: string | null;
 };
 
 export const adminExercisesInitialState: AdminExercisesState = {
-  list: [],
+  table: {
+    list: [],
+    page: 0,
+    rowsPerPage: 10,
+    totalCount: 0,
+    sortBy: 'name',
+    sortDirection: 'asc',
+    selectedIds: [],
+  },
   filters: {
     search: '',
     includeDeleted: false,
@@ -49,28 +51,28 @@ export const adminExercisesInitialState: AdminExercisesState = {
     measurementTypeIds: [],
     primaryMuscleIds: [],
     secondaryMuscleIds: [],
-    sortBy: 'name',
-    sortDirection: 'asc',
-  },
-  pagination: {
-    page: 0,
-    rowsPerPage: 10,
-    totalCount: 0,
   },
   form: {
-    id: null,
     name: '',
     code: '',
-    description: '',
+    description: null,
     category: '',
     difficulty: '',
-    measurementTypeIds: [],
-    primaryMuscleIds: [],
-    secondaryMuscleIds: [],
+    measurementTypeId: undefined,
+    measurementTypeName: undefined,
+    primaryMuscles: [],
+    secondaryMuscles: [],
+    images: [],
+    videos: [],
+    active: true,
   },
+  csvResult: null,
+  referenceMuscles: [],
+  referenceMeasurementTypes: [],
   error: null,
   loading: false,
   popUpCode: null,
 };
 
 export const selectAdminExercisesState = (state: RootState) => state.adminExercises;
+

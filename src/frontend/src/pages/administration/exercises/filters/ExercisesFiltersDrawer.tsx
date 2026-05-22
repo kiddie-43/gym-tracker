@@ -9,8 +9,8 @@ import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import { useTranslation } from 'react-i18next';
 
-import type { MeasurementTypeDto } from '../../../../interfaces/admin/measurementTypes/measurementTypes';
-import type { MuscleDto } from '../../../../interfaces/admin/muscles/muscles';
+import type { IMeasurementType } from '../../../../interfaces/admin/measurementTypes/measurementTypes';
+import type { IMuscle } from '../../../../interfaces/muscles/IMuscles';
 
 type ExercisesFiltersDrawerProps = {
   open: boolean;
@@ -21,8 +21,8 @@ type ExercisesFiltersDrawerProps = {
   selectedPrimaryMuscleIds: string[];
   selectedSecondaryMuscleIds: string[];
   difficultyOptions: string[];
-  measurementTypeOptions: MeasurementTypeDto[];
-  muscleOptions: MuscleDto[];
+  measurementTypeOptions: IMeasurementType[];
+  muscleOptions: IMuscle[];
   onClose: () => void;
   onSearchInputChange: (value: string) => void;
   onIncludeDeletedChange: (value: boolean) => void;
@@ -106,10 +106,10 @@ export function ExercisesFiltersDrawer({
           <Autocomplete
             multiple
             options={measurementTypeOptions}
-            value={measurementTypeOptions.filter((item) => selectedMeasurementTypeIds.includes(item.id))}
-            getOptionLabel={(option) => `${option.name} (${option.key})`}
+            value={measurementTypeOptions.filter((item) => item.id !== undefined && selectedMeasurementTypeIds.includes(item.id))}
+            getOptionLabel={(option) => `${option.name} (${option.code ?? ''})`}
             isOptionEqualToValue={(option, value) => option.id === value.id}
-            onChange={(_event, value) => onSelectedMeasurementTypeIdsChange(value.map((item) => item.id))}
+            onChange={(_event, value) => onSelectedMeasurementTypeIdsChange(value.map((item) => item.id!))}
             renderInput={(params) => (
               <TextField
                 {...params}
@@ -121,10 +121,10 @@ export function ExercisesFiltersDrawer({
           <Autocomplete
             multiple
             options={muscleOptions}
-            value={muscleOptions.filter((item) => selectedPrimaryMuscleIds.includes(item.id))}
-            getOptionLabel={(option) => `${option.name} (${option.code})`}
+            value={muscleOptions.filter((item) => item.id !== undefined && selectedPrimaryMuscleIds.includes(item.id))}
+            getOptionLabel={(option) => `${option.name} (${option.code ?? ''})`}
             isOptionEqualToValue={(option, value) => option.id === value.id}
-            onChange={(_event, value) => onSelectedPrimaryMuscleIdsChange(value.map((item) => item.id))}
+            onChange={(_event, value) => onSelectedPrimaryMuscleIdsChange(value.map((item) => item.id!))}
             renderInput={(params) => (
               <TextField
                 {...params}
@@ -136,10 +136,10 @@ export function ExercisesFiltersDrawer({
           <Autocomplete
             multiple
             options={muscleOptions}
-            value={muscleOptions.filter((item) => selectedSecondaryMuscleIds.includes(item.id))}
-            getOptionLabel={(option) => `${option.name} (${option.code})`}
+            value={muscleOptions.filter((item) => item.id !== undefined && selectedSecondaryMuscleIds.includes(item.id))}
+            getOptionLabel={(option) => `${option.name} (${option.code ?? ''})`}
             isOptionEqualToValue={(option, value) => option.id === value.id}
-            onChange={(_event, value) => onSelectedSecondaryMuscleIdsChange(value.map((item) => item.id))}
+            onChange={(_event, value) => onSelectedSecondaryMuscleIdsChange(value.map((item) => item.id!))}
             renderInput={(params) => (
               <TextField
                 {...params}

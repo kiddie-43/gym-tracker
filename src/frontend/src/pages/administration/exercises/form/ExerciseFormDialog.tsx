@@ -9,8 +9,8 @@ import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import { useTranslation } from 'react-i18next';
 
-import type { MeasurementTypeDto } from '../../../../interfaces/admin/measurementTypes/measurementTypes';
-import type { MuscleDto } from '../../../../interfaces/admin/muscles/muscles';
+import type { IMeasurementType } from '../../../../interfaces/admin/measurementTypes/measurementTypes';
+import type { IMuscle } from '../../../../interfaces/muscles/IMuscles';
 import type { ExerciseFormState } from './exerciseForm';
 import { PopupDialog } from '../../../../components/PopupDialog/PopupDialog';
 
@@ -19,8 +19,8 @@ type ExerciseFormDialogProps = {
   loading: boolean;
   error: string | null;
   formState: ExerciseFormState;
-  referenceMeasurementTypes: MeasurementTypeDto[];
-  referenceMuscles: MuscleDto[];
+  referenceMeasurementTypes: IMeasurementType[];
+  referenceMuscles: IMuscle[];
   onClose: () => void;
   onSubmit: () => void;
   onChange: (patch: Partial<ExerciseFormState>) => void;
@@ -38,11 +38,7 @@ export function ExerciseFormDialog({
   onChange,
 }: ExerciseFormDialogProps) {
   const { t } = useTranslation();
-  const selectedMeasurementTypes = referenceMeasurementTypes
-    .filter((row) => formState.measurementTypeIds.includes(row.id));
-
-  const selectedPrimaryMuscles = referenceMuscles.filter((row) => formState.primaryMuscleIds.includes(row.id));
-  const selectedSecondaryMuscles = referenceMuscles.filter((row) => formState.secondaryMuscleIds.includes(row.id));
+  const selectedMeasurementType = referenceMeasurementTypes.find((m) => m.id === formState.measurementTypeId) ?? null;
 
   return (
     <PopupDialog
@@ -58,13 +54,13 @@ export function ExerciseFormDialog({
         <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
           <TextField
             label={t('administration.common.fields.name')}
-            value={formState.name}
+            value={formState.name ?? ''}
             onChange={(event) => onChange({ name: event.target.value })}
             fullWidth
           />
           <TextField
             label={t('common.fields.code')}
-            value={formState.code}
+            value={formState.code ?? ''}
             onChange={(event) => onChange({ code: event.target.value })}
             disabled={Boolean(formState.id)}
             helperText={formState.id ? t('common.messages.codeReadOnly') : undefined}
@@ -74,7 +70,7 @@ export function ExerciseFormDialog({
 
         <TextField
           label={t('common.fields.description')}
-          value={formState.description}
+          value={formState.description ?? ''}
           onChange={(event) => onChange({ description: event.target.value })}
           fullWidth
         />
@@ -85,7 +81,7 @@ export function ExerciseFormDialog({
             <Select
               labelId="exercise-difficulty-label"
               label={t('administration.exercises.fields.difficulty')}
-              value={formState.difficulty}
+              value={formState.difficulty ?? ''}
               onChange={(event) => onChange({ difficulty: String(event.target.value) })}
             >
               <MenuItem value="">-</MenuItem>
@@ -100,7 +96,7 @@ export function ExerciseFormDialog({
             <Select
               labelId="exercise-category-label"
               label={t('administration.exercises.fields.category')}
-              value={formState.category}
+              value={formState.category ?? ''}
               onChange={(event) => onChange({ category: String(event.target.value) })}
             >
               <MenuItem value="">-</MenuItem>
@@ -113,13 +109,11 @@ export function ExerciseFormDialog({
         </Stack>
 
         <Autocomplete
-          multiple
           options={referenceMeasurementTypes}
-          value={selectedMeasurementTypes}
-          disableCloseOnSelect
+          value={selectedMeasurementType}
           isOptionEqualToValue={(option, value) => option.id === value.id}
           getOptionLabel={(option) => option.name}
-          onChange={(_event, value) => onChange({ measurementTypeIds: value.map((item) => item.id) })}
+          onChange={(_event, value) => onChange({ measurementTypeId: value?.id })}
           renderInput={(params) => (
             <TextField
               {...params}
@@ -127,9 +121,8 @@ export function ExerciseFormDialog({
               placeholder={t('administration.exercises.fields.measurementType')}
             />
           )}
-          renderOption={(props, option, { selected }) => (
+          renderOption={(props, option) => (
             <li {...props} key={option.id}>
-              <Checkbox checked={selected} />
               {option.name}
             </li>
           )}
@@ -138,11 +131,11 @@ export function ExerciseFormDialog({
         <Autocomplete
           multiple
           options={referenceMuscles}
-          value={selectedPrimaryMuscles}
+          value={formState.primaryMuscles}
           disableCloseOnSelect
           isOptionEqualToValue={(option, value) => option.id === value.id}
           getOptionLabel={(option) => option.name}
-          onChange={(_event, value) => onChange({ primaryMuscleIds: value.map((item) => item.id) })}
+          onChange={(_event, value) => onChange({ primaryMuscles: value })}
           renderInput={(params) => (
             <TextField
               {...params}
@@ -161,11 +154,11 @@ export function ExerciseFormDialog({
         <Autocomplete
           multiple
           options={referenceMuscles}
-          value={selectedSecondaryMuscles}
+          value={formState.secondaryMuscles}
           disableCloseOnSelect
           isOptionEqualToValue={(option, value) => option.id === value.id}
           getOptionLabel={(option) => option.name}
-          onChange={(_event, value) => onChange({ secondaryMuscleIds: value.map((item) => item.id) })}
+          onChange={(_event, value) => onChange({ secondaryMuscles: value })}
           renderInput={(params) => (
             <TextField
               {...params}
