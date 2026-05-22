@@ -73,7 +73,7 @@ public sealed class ExerciseRelationsValidatorTests
             Description: "Ejercicio compuesto",
             Category: "type-strength",
             Difficulty: "STRENGTH",
-            MeasurementTypeId: "form-strength",
+            MeasurementTypeIds: new[] { "form-strength" },
             MeasurementTypeCode: "STRENGTH_BASIC",
             PrimaryMuscleIds: primaryMuscleIds,
             SecondaryMuscleIds: Array.Empty<string>(),

@@ -21,8 +21,8 @@ type ExerciseApiRow = {
   category: string;
   primaryMuscles: IMuscle[];
   secondaryMuscles: IMuscle[];
-  measurementTypeId: string;
-  measurementTypeName: string;
+  measurementTypeIds: string[];
+  measurementTypeNames: string[];
   images: string[];
   videos: string[];
   isDeleted: boolean;
@@ -42,7 +42,7 @@ type UpsertExerciseApiRequest = {
   description?: string | null;
   category: string;
   difficulty: string;
-  measurementTypeId: string;
+  measurementTypeIds: string[];
   primaryMuscleIds: string[];
   secondaryMuscleIds: string[];
   images?: string[];
@@ -59,8 +59,8 @@ function toIExercise(row: ExerciseApiRow): IExercise {
     isDeleted: row.isDeleted,
     category: row.category,
     difficulty: row.difficulty,
-    measurementTypeId: row.measurementTypeId,
-    measurementTypeName: row.measurementTypeName,
+    measurementTypeIds: row.measurementTypeIds ?? [],
+    measurementTypeNames: row.measurementTypeNames ?? [],
     primaryMuscles: row.primaryMuscles ?? [],
     secondaryMuscles: row.secondaryMuscles ?? [],
     images: row.images,

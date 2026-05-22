@@ -67,7 +67,7 @@ export const submitAdminExerciseForm = createAsyncThunk<IExercise, void, AdminEx
         description: form.description?.trim() || null,
         category: form.category ?? '',
         difficulty: form.difficulty ?? '',
-        measurementTypeId: form.measurementTypeId ?? '',
+        measurementTypeIds: form.measurementTypeIds ?? [],
         primaryMuscleIds: form.primaryMuscles.map((m) => m.id!),
         secondaryMuscleIds: form.secondaryMuscles.map((m) => m.id!),
         images: form.images ?? [],

@@ -27,8 +27,8 @@ export interface IExercise {
   description?: string | null;
   category?: string;
   difficulty?: string;
-  measurementTypeId?: string;
-  measurementTypeName?: string;
+  measurementTypeIds?: string[];
+  measurementTypeNames?: string[];
   primaryMuscles: IMuscle[];
   secondaryMuscles: IMuscle[];
   images?: string[];

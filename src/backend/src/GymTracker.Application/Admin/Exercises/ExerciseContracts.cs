@@ -8,16 +8,14 @@ public sealed record UpsertExerciseRequest(
     string? Description,
     string Category,
     string Difficulty,
-    string MeasurementTypeId,
+    IReadOnlyCollection<string> MeasurementTypeIds,
     string MeasurementTypeCode,
     IReadOnlyCollection<string> PrimaryMuscleIds,
     IReadOnlyCollection<string> SecondaryMuscleIds,
     IReadOnlyCollection<string> MuscleGroupIds,
     bool Active = true)
 {
-    public IReadOnlyCollection<string> MeasurementTypeIds => string.IsNullOrWhiteSpace(MeasurementTypeId)
-        ? Array.Empty<string>()
-        : new[] { MeasurementTypeId };
+    public string MeasurementTypeId => MeasurementTypeIds.FirstOrDefault() ?? string.Empty;
 
     public string ExerciseTypeId => Category;
 
@@ -35,7 +33,7 @@ public sealed record ExerciseResponse(
     string? Description,
     string Category,
     string Difficulty,
-    string MeasurementTypeId,
+    IReadOnlyCollection<string> MeasurementTypeIds,
     string MeasurementTypeCode,
     IReadOnlyCollection<string> PrimaryMuscleIds,
     IReadOnlyCollection<string> SecondaryMuscleIds,
@@ -48,6 +46,8 @@ public sealed record ExerciseResponse(
     DateTimeOffset UpdatedAt,
     DateTimeOffset? DeletedAt)
 {
+    public string MeasurementTypeId => MeasurementTypeIds.FirstOrDefault() ?? string.Empty;
+
     public string ExerciseTypeId => Category;
 
     public string ExerciseTypeCode => Difficulty;

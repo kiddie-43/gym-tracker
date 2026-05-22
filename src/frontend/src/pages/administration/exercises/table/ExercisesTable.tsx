@@ -169,7 +169,7 @@ export function ExercisesTable({
                 <TableCell>{row.name}</TableCell>
                 <TableCell>{row.category}</TableCell>
                 <TableCell>{row.difficulty}</TableCell>
-                <TableCell>{row.measurementTypeName}</TableCell>
+                <TableCell>{(row.measurementTypeNames ?? []).join(', ') || '-'}</TableCell>
                 <TableCell sx={{ fontSize: '0.75rem' }}>{row.primaryMuscles.map(m => m.name).join(', ')}</TableCell>
                 <TableCell sx={{ fontSize: '0.75rem' }}>{row.secondaryMuscles.map(m => m.name).join(', ')}</TableCell>
                 <TableCell>

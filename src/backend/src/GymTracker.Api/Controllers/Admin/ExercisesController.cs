@@ -139,21 +139,11 @@ public sealed class ExercisesController : ControllerBase
 
         foreach (var row in rows)
         {
-            var measurementType = await ResolveMeasurementTypeAsync(
-                new UpsertExerciseApiRequest(
-                    Code: row.Code ?? string.Empty,
-                    Name: row.Name ?? string.Empty,
-                    Description: row.Description,
-                    Difficulty: row.Difficulty,
-                    Category: row.Category,
-                    PrimaryMuscleIds: row.PrimaryMuscleIds,
-                    SecondaryMuscleIds: row.SecondaryMuscleIds,
-                    MeasurementTypeId: row.MeasurementTypeId,
-                    Images: null,
-                    Videos: null,
-                    FormTypeId: row.FormTypeId,
-                    FormTypeCode: row.FormTypeCode),
-                cancellationToken);
+            var rawId = row.MeasurementTypeId ?? row.FormTypeId;
+            var singleIds = string.IsNullOrWhiteSpace(rawId) ? Array.Empty<string>() : new[] { rawId };
+            var measurementTypes = await ResolveMeasurementTypesAsync(singleIds, cancellationToken);
+            var firstId = measurementTypes.Count > 0 ? measurementTypes.First().Id : string.Empty;
+            var firstCode = measurementTypes.Count > 0 ? measurementTypes.First().Code : string.Empty;
 
             normalizedRows.Add(new ImportExerciseRowRequest(
                 Code: row.Code,
@@ -161,8 +151,8 @@ public sealed class ExercisesController : ControllerBase
                 Description: row.Description,
                 Category: row.Category,
                 Difficulty: row.Difficulty,
-                MeasurementTypeId: measurementType.Id,
-                MeasurementTypeCode: measurementType.Code,
+                MeasurementTypeId: firstId,
+                MeasurementTypeCode: firstCode,
                 PrimaryMuscleIds: row.PrimaryMuscleIds,
                 SecondaryMuscleIds: row.SecondaryMuscleIds));
         }
@@ -184,7 +174,8 @@ public sealed class ExercisesController : ControllerBase
 
     private async Task<UpsertExerciseRequest> MapAsync(UpsertExerciseApiRequest request, CancellationToken cancellationToken)
     {
-        var measurementType = await ResolveMeasurementTypeAsync(request, cancellationToken);
+        var measurementTypes = await ResolveMeasurementTypesAsync(request.MeasurementTypeIds ?? Array.Empty<string>(), cancellationToken);
+        var firstCode = measurementTypes.Count > 0 ? measurementTypes.First().Code : string.Empty;
 
         var primary = request.PrimaryMuscleIds ?? Array.Empty<string>();
         var secondary = request.SecondaryMuscleIds ?? Array.Empty<string>();
@@ -195,8 +186,8 @@ public sealed class ExercisesController : ControllerBase
             Description: request.Description,
             Category: ResolveCategory(request),
             Difficulty: ResolveDifficulty(request),
-            MeasurementTypeId: measurementType.Id,
-            MeasurementTypeCode: measurementType.Code,
+            MeasurementTypeIds: measurementTypes.Select(m => m.Id).ToArray(),
+            MeasurementTypeCode: firstCode,
             PrimaryMuscleIds: primary,
             SecondaryMuscleIds: secondary,
             MuscleGroupIds: primary,
@@ -225,33 +216,38 @@ public sealed class ExercisesController : ControllerBase
             ?? throw new ArgumentException("Difficulty is required.", nameof(request.Difficulty));
     }
 
-    private async Task<(string Id, string Code)> ResolveMeasurementTypeAsync(UpsertExerciseApiRequest request, CancellationToken cancellationToken)
+    private async Task<IReadOnlyCollection<(string Id, string Code)>> ResolveMeasurementTypesAsync(IReadOnlyCollection<string> ids, CancellationToken cancellationToken)
     {
-        var normalizedId = request.MeasurementTypeId ?? request.FormTypeId;
-        if (!string.IsNullOrWhiteSpace(normalizedId))
+        if (ids.Count == 0)
         {
-            var byId = await _measurementTypeRepository.GetByIdAsync(normalizedId, cancellationToken);
-            if (byId is not null)
+            return Array.Empty<(string, string)>();
+        }
+
+        var assignable = await _measurementTypeRepository.ListAsync(cancellationToken);
+        var byId = assignable.ToDictionary(m => m.Id, m => m, StringComparer.OrdinalIgnoreCase);
+        var byCode = assignable.ToDictionary(m => m.Code, m => m, StringComparer.OrdinalIgnoreCase);
+
+        var result = new List<(string Id, string Code)>(ids.Count);
+        foreach (var raw in ids)
+        {
+            var normalized = raw.Trim();
+            if (string.IsNullOrWhiteSpace(normalized)) continue;
+
+            if (byId.TryGetValue(normalized, out var byIdMatch))
             {
-                return (byId.Id, byId.Code);
+                result.Add((byIdMatch.Id, byIdMatch.Code));
+            }
+            else if (byCode.TryGetValue(normalized, out var byCodeMatch))
+            {
+                result.Add((byCodeMatch.Id, byCodeMatch.Code));
+            }
+            else
+            {
+                result.Add((normalized, normalized));
             }
         }
 
-        var normalizedCode = request.FormTypeCode;
-        if (!string.IsNullOrWhiteSpace(normalizedCode))
-        {
-            var byCode = (await _measurementTypeRepository.ListAsync(cancellationToken))
-                .FirstOrDefault(item => string.Equals(item.Code, normalizedCode, StringComparison.OrdinalIgnoreCase));
-
-            if (byCode is not null)
-            {
-                return (byCode.Id, byCode.Code);
-            }
-
-            return (normalizedCode, normalizedCode);
-        }
-
-        return (normalizedId ?? string.Empty, string.Empty);
+        return result;
     }
 
     private static ExerciseApiResponse Map(ExerciseResponse row, Dictionary<string, string> muscleNames, Dictionary<string, string> measurementTypeNames)
@@ -265,8 +261,8 @@ public sealed class ExercisesController : ControllerBase
             row.ExerciseTypeId,
             row.PrimaryMuscleIds.Select(id => new MuscleSummaryApiResponse(id, muscleNames.GetValueOrDefault(id, id))).ToArray(),
             row.SecondaryMuscleIds.Select(id => new MuscleSummaryApiResponse(id, muscleNames.GetValueOrDefault(id, id))).ToArray(),
-            row.FormTypeId,
-            measurementTypeNames.GetValueOrDefault(row.FormTypeId, row.FormTypeId),
+            row.MeasurementTypeIds.ToArray(),
+            row.MeasurementTypeIds.Select(id => measurementTypeNames.GetValueOrDefault(id, id)).ToArray(),
             row.Media.Where(item => item.MediaType == ExerciseMediaType.Image).Select(item => item.StoragePath).ToArray(),
             row.Media.Where(item => item.MediaType == ExerciseMediaType.Video).Select(item => item.StoragePath).ToArray(),
             row.IsDeleted,
@@ -293,7 +289,7 @@ public sealed record UpsertExerciseApiRequest(
     string? Category,
     IReadOnlyCollection<string>? PrimaryMuscleIds,
     IReadOnlyCollection<string>? SecondaryMuscleIds,
-    string? MeasurementTypeId,
+    IReadOnlyCollection<string>? MeasurementTypeIds,
     IReadOnlyCollection<string>? Images,
     IReadOnlyCollection<string>? Videos,
     [property: JsonPropertyName("exerciseTypeId")]
@@ -316,8 +312,8 @@ public sealed record ExerciseApiResponse(
     string Category,
     IReadOnlyCollection<MuscleSummaryApiResponse> PrimaryMuscles,
     IReadOnlyCollection<MuscleSummaryApiResponse> SecondaryMuscles,
-    string MeasurementTypeId,
-    string MeasurementTypeName,
+    IReadOnlyCollection<string> MeasurementTypeIds,
+    IReadOnlyCollection<string> MeasurementTypeNames,
     IReadOnlyCollection<string> Images,
     IReadOnlyCollection<string> Videos,
     bool IsDeleted,

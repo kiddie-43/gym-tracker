@@ -38,7 +38,9 @@ export function ExerciseFormDialog({
   onChange,
 }: ExerciseFormDialogProps) {
   const { t } = useTranslation();
-  const selectedMeasurementType = referenceMeasurementTypes.find((m) => m.id === formState.measurementTypeId) ?? null;
+  const selectedMeasurementTypes = referenceMeasurementTypes.filter(
+    (m) => m.id !== undefined && (formState.measurementTypeIds ?? []).includes(m.id),
+  );
 
   return (
     <PopupDialog
@@ -109,11 +111,13 @@ export function ExerciseFormDialog({
         </Stack>
 
         <Autocomplete
+          multiple
           options={referenceMeasurementTypes}
-          value={selectedMeasurementType}
+          value={selectedMeasurementTypes}
+          disableCloseOnSelect
           isOptionEqualToValue={(option, value) => option.id === value.id}
           getOptionLabel={(option) => option.name}
-          onChange={(_event, value) => onChange({ measurementTypeId: value?.id })}
+          onChange={(_event, value) => onChange({ measurementTypeIds: value.map((m) => m.id!).filter(Boolean) })}
           renderInput={(params) => (
             <TextField
               {...params}
@@ -121,8 +125,9 @@ export function ExerciseFormDialog({
               placeholder={t('administration.exercises.fields.measurementType')}
             />
           )}
-          renderOption={(props, option) => (
+          renderOption={(props, option, { selected }) => (
             <li {...props} key={option.id}>
+              <Checkbox checked={selected} />
               {option.name}
             </li>
           )}
