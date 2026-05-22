@@ -15,6 +15,7 @@ Thumbs.db
 *.swp
 .idea/
 .vscode/
+.vs/
 *.user
 *.suo
 packages/
