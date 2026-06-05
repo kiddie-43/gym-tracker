@@ -22,7 +22,7 @@ public sealed class SessionExercisesIntegrationTests : IClassFixture<WebApplicat
     [Fact]
     public async Task AddAndUnlinkExercise_ShouldReturnExpectedStatusCodes()
     {
-        var createRoutineResponse = await _client.PostAsJsonAsync("/api/routines", new CreateRoutineDto("Legs", "Goal"));
+        var createRoutineResponse = await _client.PostAsJsonAsync("/api/routines", new CreateRoutineDto { Name = "Legs", Goal = "Goal" });
         var routine = await createRoutineResponse.Content.ReadFromJsonAsync<RoutineDetailDto>();
 
         var createSessionResponse = await _client.PostAsJsonAsync(

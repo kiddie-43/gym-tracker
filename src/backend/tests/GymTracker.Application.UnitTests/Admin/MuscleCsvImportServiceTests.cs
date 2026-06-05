@@ -26,9 +26,9 @@ public sealed class MuscleCsvImportServiceTests
 
     private sealed class InMemoryMuscleRepository : IMuscleRepository
     {
-        private readonly Dictionary<string, Muscle> _store = new(StringComparer.OrdinalIgnoreCase);
+        private readonly Dictionary<Guid, Muscle> _store = [];
 
-        public Task<Muscle?> GetByIdAsync(string id, CancellationToken cancellationToken = default)
+        public Task<Muscle?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
         {
             _store.TryGetValue(id, out var entity);
             return Task.FromResult(entity);
@@ -43,12 +43,12 @@ public sealed class MuscleCsvImportServiceTests
             return Task.FromResult<IReadOnlyCollection<Muscle>>(rows);
         }
 
-        public Task<bool> ExistsActiveCodeAsync(string code, string? excludingId = null, CancellationToken cancellationToken = default)
+        public Task<bool> ExistsActiveCodeAsync(string code, Guid? excludingId = null, CancellationToken cancellationToken = default)
         {
             var exists = _store.Values.Any(item =>
                 !item.IsDeleted
                 && string.Equals(item.Code, code, StringComparison.OrdinalIgnoreCase)
-                && !string.Equals(item.Id, excludingId, StringComparison.OrdinalIgnoreCase));
+                && item.Id != excludingId);
 
             return Task.FromResult(exists);
         }
@@ -59,7 +59,7 @@ public sealed class MuscleCsvImportServiceTests
             return Task.CompletedTask;
         }
 
-        public async Task<bool> DeleteAsync(string id, DateTimeOffset now, CancellationToken cancellationToken = default)
+        public async Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default)
         {
             var row = await GetByIdAsync(id, cancellationToken);
             if (row is null)
@@ -67,11 +67,11 @@ public sealed class MuscleCsvImportServiceTests
                 return false;
             }
 
-            row.SoftDelete(now);
+            row.Delete(null);
             return true;
         }
 
-        public async Task<bool> ReactivateAsync(string id, CancellationToken cancellationToken = default)
+        public async Task<bool> ReactivateAsync(Guid id, CancellationToken cancellationToken = default)
         {
             var row = await GetByIdAsync(id, cancellationToken);
             if (row is null)
@@ -79,7 +79,7 @@ public sealed class MuscleCsvImportServiceTests
                 return false;
             }
 
-            row.Reactivate();
+            row.Restore();
             return true;
         }
     }

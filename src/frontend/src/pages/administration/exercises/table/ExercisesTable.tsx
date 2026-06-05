@@ -1,71 +1,40 @@
 import { useState } from 'react';
 import type { ChangeEvent } from 'react';
-
-import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded';
 import DeleteOutlineRoundedIcon from '@mui/icons-material/DeleteOutlineRounded';
 import EditRoundedIcon from '@mui/icons-material/EditRounded';
 import MoreVertRoundedIcon from '@mui/icons-material/MoreVertRounded';
-import RemoveCircleOutlineRoundedIcon from '@mui/icons-material/RemoveCircleOutlineRounded';
-import ReplayRoundedIcon from '@mui/icons-material/ReplayRounded';
 import Checkbox from '@mui/material/Checkbox';
-import Chip from '@mui/material/Chip';
 import IconButton from '@mui/material/IconButton';
 import ListItemIcon from '@mui/material/ListItemIcon';
 import ListItemText from '@mui/material/ListItemText';
 import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
 import TableSortLabel from '@mui/material/TableSortLabel';
-import TableBody from '@mui/material/TableBody';
+
 import TableCell from '@mui/material/TableCell';
 import TableRow from '@mui/material/TableRow';
 import { useTranslation } from 'react-i18next';
-
+import { PopUpCode } from '../../../../enums/popUp/popUp';
 import { DataTable } from '../../../../components/DataTable/DataTable';
-import type { IExercise } from '../../../../interfaces/admin/exercises/exercises';
+import type { IExercise, IExercisesFilter } from '../../../../interfaces/IExercises/IExercises';
+import {
+  fetchExercisesPageAction,
+  setExerciseDialogStateAction,
+  setExercisesTable,
+} from '../../../../redux/actions/exercises/exercisesActions';
+import { useAppDispatch, useAppSelector } from '../../../../redux/hooks';
 
-type ExercisesTableProps = {
-  rows: IExercise[];
-  selectedIds: string[];
-  sortBy: 'code' | 'name' | 'category' | 'difficulty';
-  sortDirection: 'asc' | 'desc';
-  onSortChange: (field: 'code' | 'name' | 'category' | 'difficulty') => void;
-  page: number;
-  rowsPerPage: number;
-  totalCount: number;
-  onPageChange: (_event: unknown, newPage: number) => void;
-  onRowsPerPageChange: (event: ChangeEvent<HTMLInputElement>) => void;
-  onSelectionChange: (ids: string[]) => void;
-  onEdit: (row: IExercise) => void;
-  onDelete: (row: IExercise) => void;
-  onReactivate: (row: IExercise) => void;
-};
 
-export function ExercisesTable({
-  rows,
-  selectedIds,
-  sortBy,
-  sortDirection,
-  onSortChange,
-  page,
-  rowsPerPage,
-  totalCount,
-  onPageChange,
-  onRowsPerPageChange,
-  onSelectionChange,
-  onEdit,
-  onDelete,
-  onReactivate,
-}: ExercisesTableProps) {
+
+
+
+export function ExercisesTable() {
   const { t } = useTranslation();
+  const dispatch = useAppDispatch();
   const [menuAnchorEl, setMenuAnchorEl] = useState<HTMLElement | null>(null);
   const [menuRowId, setMenuRowId] = useState<string | null>(null);
-
-  const activeRowIds = rows
-    .filter((row): row is IExercise & { id: string } => !row.isDeleted && row.id !== undefined)
-    .map((row) => row.id);
-  const selectedActiveCount = activeRowIds.filter((id) => selectedIds.includes(id)).length;
-  const allActiveSelected = activeRowIds.length > 0 && selectedActiveCount === activeRowIds.length;
-  const someActiveSelected = selectedActiveCount > 0 && !allActiveSelected;
+  const { table, filters } = useAppSelector((state) => state.exercises);
+  const { items, totalCount, page, pageSize, sortBy, sortDirection, selectedIds } = table;
 
   const openMenu = (event: React.MouseEvent<HTMLElement>, rowId: string) => {
     setMenuAnchorEl(event.currentTarget);
@@ -77,36 +46,82 @@ export function ExercisesTable({
     setMenuRowId(null);
   };
 
-  const selectedRow = rows.find((row) => row.id === menuRowId) ?? null;
+  const selectedRow = items.find((row) => row.id === menuRowId) ?? null;
+  const rowsPerPage = pageSize;
+  const safeSelectedIds = selectedIds ?? [];
+  const selectableRowIds = items
 
-  const toggleSelectAll = (checked: boolean) => {
-    if (checked) {
-      onSelectionChange(activeRowIds);
-      return;
-    }
-    onSelectionChange([]);
+    .map((row) => row.id as string);
+  const selectedActiveCount = selectableRowIds.filter((id) => safeSelectedIds.includes(id)).length;
+  const allActiveSelected = selectableRowIds.length > 0 && selectedActiveCount === selectableRowIds.length;
+  const someActiveSelected = selectedActiveCount > 0 && !allActiveSelected;
+
+  const buildQuery = (overrides: Partial<IExercisesFilter> = {}): IExercisesFilter => ({
+    unitId: filters.unitId,
+    primaryMuscleId: filters.primaryMuscleId,
+    secondaryMuscleId: filters.secondaryMuscleId,
+    sortBy: sortBy === '' ? undefined : (sortBy as IExercisesFilter['sortBy']),
+    sortDirection,
+    page,
+    pageSize: rowsPerPage,
+    ...overrides,
+  });
+
+
+
+
+  const onSort = (field: 'code' | 'name' | 'category' | 'difficulty') => {
+    const newDirection = sortBy === field && sortDirection === 'asc' ? 'desc' : 'asc';
+    dispatch(setExercisesTable({ ...table, sortBy: field, sortDirection: newDirection, page: 0 }));
+    void dispatch(fetchExercisesPageAction(buildQuery({ sortBy: field, sortDirection: newDirection, page: 0 })) as never);
   };
 
-  const toggleSelectRow = (rowId: string, checked: boolean) => {
-    if (checked) {
-      onSelectionChange(Array.from(new Set([...selectedIds, rowId])));
+  const onEdit = (exercise: IExercise) => {
+    dispatch(setExerciseDialogStateAction(PopUpCode.Update, { ...exercise }));
+  };
+
+
+
+  const onDelete = (exercise: IExercise) => {
+    dispatch(setExerciseDialogStateAction(PopUpCode.Delete, exercise));
+  };
+
+  const onToggleSelect = (rowId?: string, checked?: boolean) => {
+    if (!rowId) {
+      dispatch(setExercisesTable({ ...table, selectedIds: checked ? selectableRowIds : [] }));
       return;
     }
-    onSelectionChange(selectedIds.filter((id) => id !== rowId));
+
+    const nextSelectedIds = checked
+      ? Array.from(new Set([...safeSelectedIds, rowId]))
+      : safeSelectedIds.filter((id) => id !== rowId);
+
+    dispatch(setExercisesTable({ ...table, selectedIds: nextSelectedIds }));
+  };
+
+  const onPageChange = (_event: unknown, newPage: number) => {
+    dispatch(setExercisesTable({ ...table, page: newPage }));
+    void dispatch(fetchExercisesPageAction(buildQuery({ page: newPage })) as never);
+  };
+
+  const onRowsPerPageChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const newPageSize = Number(event.target.value);
+    dispatch(setExercisesTable({ ...table, page: 0, pageSize: newPageSize }));
+    void dispatch(fetchExercisesPageAction(buildQuery({ page: 0, pageSize: newPageSize })) as never);
   };
 
   return (
     <>
       <DataTable
         ariaLabel={t('administration.exercises.table')}
-        columnWidths={['4%', '9%', '14%', '9%', '9%', '10%', '15%', '15%', '9%', '6%']}
+        columnWidths={['4%', '9%',  '9%', '10%', '15%', '15%',  '6%']}
         head={(
           <TableRow>
             <TableCell padding="checkbox">
               <Checkbox
                 checked={allActiveSelected}
                 indeterminate={someActiveSelected}
-                onChange={(_event, checked) => toggleSelectAll(checked)}
+                onChange={(_event, checked) => onToggleSelect(undefined, checked)}
                 inputProps={{ 'aria-label': t('administration.exercises.selectAllRows') }}
               />
             </TableCell>
@@ -114,7 +129,7 @@ export function ExercisesTable({
               <TableSortLabel
                 active={sortBy === 'code'}
                 direction={sortBy === 'code' ? sortDirection : 'asc'}
-                onClick={() => onSortChange('code')}
+                onClick={() => onSort('code')}
               >
                 {t('common.fields.code')}
               </TableSortLabel>
@@ -123,67 +138,40 @@ export function ExercisesTable({
               <TableSortLabel
                 active={sortBy === 'name'}
                 direction={sortBy === 'name' ? sortDirection : 'asc'}
-                onClick={() => onSortChange('name')}
+                onClick={() => onSort('name')}
               >
-                {t('administration.common.fields.name')}
+                {t('common.fields.name')}
               </TableSortLabel>
             </TableCell>
-            <TableCell sortDirection={sortBy === 'category' ? sortDirection : false}>
-              <TableSortLabel
-                active={sortBy === 'category'}
-                direction={sortBy === 'category' ? sortDirection : 'asc'}
-                onClick={() => onSortChange('category')}
-              >
-                {t('administration.exercises.fields.category')}
-              </TableSortLabel>
-            </TableCell>
-            <TableCell sortDirection={sortBy === 'difficulty' ? sortDirection : false}>
-              <TableSortLabel
-                active={sortBy === 'difficulty'}
-                direction={sortBy === 'difficulty' ? sortDirection : 'asc'}
-                onClick={() => onSortChange('difficulty')}
-              >
-                {t('administration.exercises.fields.difficulty')}
-              </TableSortLabel>
-            </TableCell>
+        
+          
             <TableCell>{t('administration.exercises.fields.measurementType')}</TableCell>
             <TableCell>{t('administration.exercises.fields.primaryMuscle')}</TableCell>
             <TableCell>{t('administration.exercises.fields.secondaryMuscle')}</TableCell>
-            <TableCell>{t('administration.common.status')}</TableCell>
             <TableCell align="right">{t('common.actions.actions')}</TableCell>
           </TableRow>
         )}
         body={(
           <>
-            {rows.map((row) => (
-              <TableRow key={row.id ?? row.code ?? row.name}>
+            {items.map((row) => (
+              <TableRow key={row.id ?? row.code}>
                 <TableCell padding="checkbox">
                   <Checkbox
-                    checked={row.id !== undefined && selectedIds.includes(row.id)}
-                    disabled={row.isDeleted}
-                    onChange={(_event, checked) => { if (row.id) toggleSelectRow(row.id, checked); }}
+                    checked={row.id !== undefined && safeSelectedIds.includes(row.id)}
+                    onChange={(_event, checked) => { if (row.id) onToggleSelect(row.id, checked); }}
                     inputProps={{ 'aria-label': t('administration.exercises.selectRow', { code: row.code }) }}
                   />
                 </TableCell>
                 <TableCell>{row.code}</TableCell>
                 <TableCell>{row.name}</TableCell>
-                <TableCell>{row.category}</TableCell>
-                <TableCell>{row.difficulty}</TableCell>
-                <TableCell>{(row.measurementTypeNames ?? []).join(', ') || '-'}</TableCell>
-                <TableCell sx={{ fontSize: '0.75rem' }}>{row.primaryMuscles.map(m => m.name).join(', ')}</TableCell>
-                <TableCell sx={{ fontSize: '0.75rem' }}>{row.secondaryMuscles.map(m => m.name).join(', ')}</TableCell>
-                <TableCell>
-                  <Chip
-                    size="small"
-                    color={row.isDeleted ? 'default' : 'success'}
-                    icon={row.isDeleted ? <RemoveCircleOutlineRoundedIcon /> : <CheckCircleRoundedIcon />}
-                    label={row.isDeleted ? t('administration.common.statusInactive') : t('administration.common.statusActive')}
-                  />
-                </TableCell>
+                <TableCell>{(row.units ?? []).map((item) => item.name).join(', ') || '-'}</TableCell>
+                <TableCell sx={{ fontSize: '0.75rem' }}>{(row.primaryMuscles ?? []).map((item) => item.name).join(', ') || '-'}</TableCell>
+                <TableCell sx={{ fontSize: '0.75rem' }}>{(row.secondaryMuscles ?? []).map((item) => item.name).join(', ') || '-'}</TableCell>
+
                 <TableCell align="right">
                   <IconButton
                     size="small"
-                    aria-label={t('administration.common.actionsMenu')}
+                    aria-label={t('common.actionsMenu')}
                     onClick={(event) => { if (row.id) openMenu(event, row.id); }}
                   >
                     <MoreVertRoundedIcon fontSize="small" />
@@ -195,8 +183,8 @@ export function ExercisesTable({
         )}
         pagination={{
           count: totalCount,
-          page,
-          rowsPerPage,
+          page: page ?? 0,
+          rowsPerPage: rowsPerPage ?? 10,
           onPageChange,
           onRowsPerPageChange,
         }}
@@ -210,7 +198,6 @@ export function ExercisesTable({
         transformOrigin={{ vertical: 'top', horizontal: 'right' }}
       >
         <MenuItem
-          disabled={Boolean(selectedRow?.isDeleted)}
           onClick={() => {
             if (selectedRow) {
               onEdit(selectedRow);
@@ -223,33 +210,21 @@ export function ExercisesTable({
           </ListItemIcon>
           <ListItemText>{t('common.actions.edit')}</ListItemText>
         </MenuItem>
-        {selectedRow?.isDeleted ? (
-          <MenuItem
-            onClick={() => {
-              onReactivate(selectedRow);
-              closeMenu();
-            }}
-          >
-            <ListItemIcon>
-              <ReplayRoundedIcon fontSize="small" />
-            </ListItemIcon>
-            <ListItemText>{t('administration.common.reactivate')}</ListItemText>
-          </MenuItem>
-        ) : (
-          <MenuItem
-            onClick={() => {
-              if (selectedRow) {
-                onDelete(selectedRow);
-              }
-              closeMenu();
-            }}
-          >
-            <ListItemIcon>
-              <DeleteOutlineRoundedIcon fontSize="small" />
-            </ListItemIcon>
-            <ListItemText>{t('common.actions.delete')}</ListItemText>
-          </MenuItem>
-        )}
+
+        <MenuItem
+          onClick={() => {
+            if (selectedRow) {
+              onDelete(selectedRow);
+            }
+            closeMenu();
+          }}
+        >
+          <ListItemIcon>
+            <DeleteOutlineRoundedIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>{t('common.actions.delete')}</ListItemText>
+        </MenuItem>
+
       </Menu>
     </>
   );

@@ -8,19 +8,19 @@ import {
   setRoutinesList,
   setRoutinesLoading,
   setRoutinesPopUpCode,
-  setSelectedRoutine,
-  setTrainingFlowState,
-  setCatalogAvailability,
+  updateRoutinesForm,
 } from '../../actions/routines/routinesActions';
 import { routinesInitialState } from '../../states/routines/routinesState';
 
 export const routinesReducer = createReducer(routinesInitialState, (builder) => {
   builder
     .addCase(setRoutinesList, (state, action) => {
-      state.list = action.payload;
+      state.table = action.payload;
     })
     .addCase(setRoutinesForm, (state, action) => {
       state.form = action.payload;
+    }).addCase(updateRoutinesForm, (state, action) => {
+      state.form = { ...state.form, [action.payload.key]: action.payload.value };
     })
     .addCase(setRoutinesFilters, (state, action) => {
       state.filters = action.payload;
@@ -33,15 +33,6 @@ export const routinesReducer = createReducer(routinesInitialState, (builder) => 
     })
     .addCase(setRoutinesPopUpCode, (state, action) => {
       state.popUpCode = action.payload;
-    })
-    .addCase(setSelectedRoutine, (state, action) => {
-      state.selectedRoutine = action.payload;
-    })
-    .addCase(setTrainingFlowState, (state, action) => {
-      state.trainingFlowState = action.payload;
-    })
-    .addCase(setCatalogAvailability, (state, action) => {
-      state.catalogAvailability = action.payload;
     })
     .addCase(resetRoutines, () => routinesInitialState);
 });

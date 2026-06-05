@@ -68,6 +68,12 @@ Si ambos estan disponibles, termina con exit code 0.
 - Ver recomendaciones de indices en `src/backend/src/GymTracker.Infrastructure/Firebase/FirestoreIndexes.md`.
 - El build frontend puede advertir chunk > 500kB; no es bloqueante en desarrollo.
 
+## Troubleshooting Backend
+
+- Error: `Unable to resolve service for type 'GymTracker.Application.Catalog.ICatalogAvailabilityStore' while attempting to activate 'GymTracker.Application.Catalog.CatalogAvailabilityService'`.
+- Causa: faltaba el registro DI de `ICatalogAvailabilityStore` para el servicio de disponibilidad del catalogo.
+- Solucion aplicada: se agrego `InMemoryCatalogAvailabilityStore` en `GymTracker.Infrastructure` y su registro como singleton en `AddInfrastructureServices`.
+
 ## Separacion De Responsabilidades
 
 - Firebase se usa para autenticar usuarios y almacenar sus datos propios.

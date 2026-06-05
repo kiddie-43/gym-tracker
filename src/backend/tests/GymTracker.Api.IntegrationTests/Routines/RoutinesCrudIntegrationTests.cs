@@ -22,12 +22,12 @@ public sealed class RoutinesCrudIntegrationTests : IClassFixture<WebApplicationF
     [Fact]
     public async Task CrudAndReactivate_ShouldRespectSoftDelete()
     {
-        var createResponse = await _client.PostAsJsonAsync("/api/routines", new CreateRoutineDto("Push", "Goal"));
+        var createResponse = await _client.PostAsJsonAsync("/api/routines", new CreateRoutineDto { Name = "Push", Goal = "Goal" });
         createResponse.StatusCode.Should().Be(HttpStatusCode.Created);
         var created = await createResponse.Content.ReadFromJsonAsync<RoutineDetailDto>();
         created.Should().NotBeNull();
 
-        var patchResponse = await _client.PatchAsJsonAsync($"/api/routines/{created!.Id}", new UpdateRoutineDto("Push 2", "Goal 2"));
+        var patchResponse = await _client.PatchAsJsonAsync($"/api/routines/{created!.Id}", new UpdateRoutineDto { Name = "Push 2", Goal = "Goal 2" });
         patchResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 
         var deleteResponse = await _client.DeleteAsync($"/api/routines/{created.Id}");

@@ -1,12 +1,26 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { I18nextProvider } from 'react-i18next';
 
 import { i18n } from '../../src/i18n/i18n';
 import { AdministrationPage } from '../../src/pages/administration/AdministrationPage';
 
+vi.mock('../../src/pages/administration/muscles/MusclesPanel', () => ({
+  MusclesPanel: () => <div>Muscles Panel</div>,
+}));
+
+vi.mock('../../src/pages/administration/measurement-types/MeasurementTypesPanel', () => ({
+  MeasurementTypesPanel: () => <div>Measurement Types Panel</div>,
+}));
+
+vi.mock('../../src/pages/administration/exercises/ExercisesPanel', () => ({
+  ExercisesPanel: () => <div>Exercises Panel</div>,
+}));
+
 function renderWithI18n() {
+  void i18n.changeLanguage('es');
+
   return render(
     <I18nextProvider i18n={i18n}>
       <AdministrationPage />

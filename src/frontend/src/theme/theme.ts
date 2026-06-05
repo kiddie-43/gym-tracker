@@ -1,6 +1,15 @@
 import type { PaletteMode } from '@mui/material';
 import { createTheme } from '@mui/material/styles';
 
+export const appLayoutTokens = {
+  contentX: { xs: 2, md: 3 },
+  fabPosition: {
+    bottom: { xs: 15, md: 10 },
+    top: { xs: 2, md: 3 },
+    right: { xs: 3, md: 3 },
+  },
+} as const;
+
 export function getAppTheme(mode: PaletteMode) {
   const isLight = mode === 'light';
 

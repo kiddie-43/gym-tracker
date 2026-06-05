@@ -8,4 +8,5 @@ export interface UserProfile {
 export interface AppPreferences {
   profile: UserProfile;
   themeMode: 'light' | 'dark';
+  headerTitle: string;
 }

@@ -1,53 +1,91 @@
 import Alert from '@mui/material/Alert';
 import Autocomplete from '@mui/material/Autocomplete';
 import Checkbox from '@mui/material/Checkbox';
-import FormControl from '@mui/material/FormControl';
-import InputLabel from '@mui/material/InputLabel';
-import MenuItem from '@mui/material/MenuItem';
-import Select from '@mui/material/Select';
+
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import type { IMeasurementType } from '../../../../interfaces/admin/measurementTypes/measurementTypes';
-import type { IMuscle } from '../../../../interfaces/muscles/IMuscles';
-import type { ExerciseFormState } from './exerciseForm';
 import { PopupDialog } from '../../../../components/PopupDialog/PopupDialog';
+import { PopUpCode } from '../../../../enums/popUp/popUp';
+import type { IUnit } from '../../../../interfaces/units/IUnit';
+import type { IExercise } from '../../../../interfaces/IExercises/IExercises';
+import type { IMuscle } from '../../../../interfaces/muscles/IMuscles';
+import { updateExerciseFormAction } from '../../../../redux/actions/exercises/exercisesActions';
+import { setExerciseDialogStateAction, submitExerciseFormAction } from '../../../../redux/actions/exercises/exercisesActions';
+import { useAppDispatch, useAppSelector } from '../../../../redux/hooks';
+import { selectExercisesState } from '../../../../redux/states/exercises/exercisesState';
+import { listMusclesPage } from '../../../../services/api/muscles/musclesApi';
+import { listUnitsPage } from '../../../../services/api/units/unitsApi';
 
-type ExerciseFormDialogProps = {
-  open: boolean;
-  loading: boolean;
-  error: string | null;
-  formState: ExerciseFormState;
-  referenceMeasurementTypes: IMeasurementType[];
-  referenceMuscles: IMuscle[];
-  onClose: () => void;
-  onSubmit: () => void;
-  onChange: (patch: Partial<ExerciseFormState>) => void;
-};
-
-export function ExerciseFormDialog({
-  open,
-  loading,
-  error,
-  formState,
-  referenceMeasurementTypes,
-  referenceMuscles,
-  onClose,
-  onSubmit,
-  onChange,
-}: ExerciseFormDialogProps) {
+export function ExerciseFormDialog() {
   const { t } = useTranslation();
-  const selectedMeasurementTypes = referenceMeasurementTypes.filter(
-    (m) => m.id !== undefined && (formState.measurementTypeIds ?? []).includes(m.id),
-  );
+  const dispatch = useAppDispatch();
+  const {
+    form: formState,
+    loading,
+    error,
+    popUpCode,
+  } = useAppSelector(selectExercisesState);
+  const [localReferenceMeasurementTypes, setLocalReferenceMeasurementTypes] = useState<IUnit[]>([]);
+  const [localReferenceMuscles, setLocalReferenceMuscles] = useState<IMuscle[]>([]);
+  const [loadingReferences, setLoadingReferences] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadReferences = async () => {
+      setLoadingReferences(true);
+
+      try {
+        const [musclesPage, unitsPage] = await Promise.all([
+          listMusclesPage({ page: 0, pageSize: 999 }),
+          listUnitsPage({
+            page: 0, pageSize: 999,
+            code: '',
+            name: '',
+            description: ''
+          }),
+        ]);
+
+        if (!isMounted) {
+          return;
+        }
+
+        setLocalReferenceMuscles(musclesPage.items ?? []);
+        setLocalReferenceMeasurementTypes(unitsPage.items ?? []);
+      } finally {
+        if (isMounted) {
+          setLoadingReferences(false);
+        }
+      }
+    };
+
+    void loadReferences();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const onEditForm = (key: keyof IExercise, value: unknown) => {
+    dispatch(updateExerciseFormAction({ key, value }));
+  };
+  const open = popUpCode === PopUpCode.Create || popUpCode === PopUpCode.Update;
+  const onClose = () => {
+    dispatch(setExerciseDialogStateAction(PopUpCode.Default));
+  };
+  const onSubmit = () => {
+    void dispatch(submitExerciseFormAction() as never);
+  };
+  const selectedMeasurementTypes = formState.units ?? [];
   const disableSave =
     loading ||
+    loadingReferences ||
     (formState.name ?? '').trim().length === 0 ||
-    (formState.category ?? '').trim().length === 0 ||
-    (formState.difficulty ?? '').trim().length === 0 ||
-    formState.primaryMuscles.length === 0 ||
-    (formState.measurementTypeIds ?? []).length === 0;
+    (formState.primaryMuscles ?? []).length === 0 ||
+    (formState.units ?? []).length === 0;
 
   return (
     <PopupDialog
@@ -63,69 +101,41 @@ export function ExerciseFormDialog({
       <Stack spacing={2} sx={{ mt: 1 }}>
         <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
           <TextField
-            label={t('administration.common.fields.name')}
+            label={t('common.fields.name')}
             value={formState.name ?? ''}
-            onChange={(event) => onChange({ name: event.target.value })}
+            onChange={(event) => onEditForm('name', event.target.value)}
             fullWidth
           />
+         {formState.id ? null : (
           <TextField
             label={t('common.fields.code')}
             value={formState.code ?? ''}
-            onChange={(event) => onChange({ code: event.target.value })}
+            onChange={(event) => onEditForm('code', event.target.value)}
             disabled={Boolean(formState.id)}
             helperText={formState.id ? t('common.messages.codeReadOnly') : undefined}
             fullWidth
           />
+          )}
         </Stack>
+        
 
         <TextField
           label={t('common.fields.description')}
           value={formState.description ?? ''}
-          onChange={(event) => onChange({ description: event.target.value })}
+          onChange={(event) => onEditForm('description', event.target.value)}
           fullWidth
         />
 
-        <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
-          <FormControl fullWidth>
-            <InputLabel id="exercise-difficulty-label">{t('administration.exercises.fields.difficulty')}</InputLabel>
-            <Select
-              labelId="exercise-difficulty-label"
-              label={t('administration.exercises.fields.difficulty')}
-              value={formState.difficulty ?? ''}
-              onChange={(event) => onChange({ difficulty: String(event.target.value) })}
-            >
-              <MenuItem value="">-</MenuItem>
-              <MenuItem value="Beginner">Beginner</MenuItem>
-              <MenuItem value="Intermediate">Intermediate</MenuItem>
-              <MenuItem value="Advanced">Advanced</MenuItem>
-            </Select>
-          </FormControl>
-
-          <FormControl fullWidth>
-            <InputLabel id="exercise-category-label">{t('administration.exercises.fields.category')}</InputLabel>
-            <Select
-              labelId="exercise-category-label"
-              label={t('administration.exercises.fields.category')}
-              value={formState.category ?? ''}
-              onChange={(event) => onChange({ category: String(event.target.value) })}
-            >
-              <MenuItem value="">-</MenuItem>
-              <MenuItem value="Strength">Strength</MenuItem>
-              <MenuItem value="Cardio">Cardio</MenuItem>
-              <MenuItem value="Mobility">Mobility</MenuItem>
-              <MenuItem value="Stretching">Stretching</MenuItem>
-            </Select>
-          </FormControl>
-        </Stack>
+     
 
         <Autocomplete
           multiple
-          options={referenceMeasurementTypes}
+          options={localReferenceMeasurementTypes}
           value={selectedMeasurementTypes}
           disableCloseOnSelect
           isOptionEqualToValue={(option, value) => option.id === value.id}
           getOptionLabel={(option) => option.name}
-          onChange={(_event, value) => onChange({ measurementTypeIds: value.map((m) => m.id!).filter(Boolean) })}
+          onChange={(_event, value) => onEditForm('units', value)}
           renderInput={(params) => (
             <TextField
               {...params}
@@ -143,12 +153,12 @@ export function ExerciseFormDialog({
 
         <Autocomplete
           multiple
-          options={referenceMuscles}
-          value={formState.primaryMuscles}
+          options={localReferenceMuscles}
+          value={formState.primaryMuscles ?? []}
           disableCloseOnSelect
           isOptionEqualToValue={(option, value) => option.id === value.id}
           getOptionLabel={(option) => option.name}
-          onChange={(_event, value) => onChange({ primaryMuscles: value })}
+          onChange={(_event, value) => onEditForm('primaryMuscles', value)}
           renderInput={(params) => (
             <TextField
               {...params}
@@ -166,12 +176,12 @@ export function ExerciseFormDialog({
 
         <Autocomplete
           multiple
-          options={referenceMuscles}
-          value={formState.secondaryMuscles}
+          options={localReferenceMuscles}
+          value={formState.secondaryMuscles ?? []}
           disableCloseOnSelect
           isOptionEqualToValue={(option, value) => option.id === value.id}
           getOptionLabel={(option) => option.name}
-          onChange={(_event, value) => onChange({ secondaryMuscles: value })}
+          onChange={(_event, value) => onEditForm('secondaryMuscles', value)}
           renderInput={(params) => (
             <TextField
               {...params}

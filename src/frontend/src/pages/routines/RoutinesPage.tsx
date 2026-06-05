@@ -1,243 +1,861 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-
-import AddIcon from '@mui/icons-material/Add';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import MoreVertRoundedIcon from '@mui/icons-material/MoreVertRounded';
+import AddIcon from '@mui/icons-material/Add';
+import FitnessCenterOutlinedIcon from '@mui/icons-material/FitnessCenterOutlined';
+import PlayArrowRoundedIcon from '@mui/icons-material/PlayArrowRounded';
+import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
-import CircularProgress from '@mui/material/CircularProgress';
+import Card from '@mui/material/Card';
 import Container from '@mui/material/Container';
+import IconButton from '@mui/material/IconButton';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
-import Fab from '@mui/material/Fab';
-import { useTranslation } from 'react-i18next';
+import { alpha } from '@mui/material/styles';
 
 import {
-  cancelTrainingFlowAction,
-  createRoutineAction,
-  deletePlannedSetAction,
-  fetchRoutines,
-  loadRoutineDetail,
-  restoreTrainingFlowAction,
-  setSelectedRoutine,
-  setRoutinesPopUpCode,
-  unlinkSessionExerciseAction,
-  updatePlannedSetAction,
-  createSessionAction
+
+  AddAndEditRoutineAction,
+
+
+  setRoutinePopUpCodeAction,
+
+  fetchRoutinesPage,
+  deleteRoutineAction,
+  setRoutineFormAction
 } from '../../redux/actions/routines/routinesActions';
+
 import type { AppDispatch } from '../../redux/store';
-import { selectFilteredRoutines, selectRoutinesState } from '../../redux/states/routines/routinesState';
-import { SessionExerciseCard } from './components/SessionExerciseCard/SessionExerciseCard';
-import { RoutineSessionsSection } from './components/RoutineSessionsSection/RoutineSessionsSection';
-import { FeedbackMessage } from '../../components/FeedbackMessage/FeedbackMessage';
-import { RoutineFormDialog } from './form/RoutineFormDialog';
-import { RoutineList } from './list/RoutineList';
-import { SessionList } from './components/sessions/SessionList';
-import { ExerciseList } from './components/exercises/ExerciseList';
-import { Filters } from './filters/Filters';
+import { selectRoutinesState } from '../../redux/states/routines/routinesState';
+import { FeedbackMessageSpotlight } from '../../components/FeedbackMessage/FeedbackMessage';
+import { appLayoutTokens } from '../../theme/theme';
+import { RoutineFormDialog } from './routines/form/RoutineFormDialog';
+import { RoutineList } from './routines/list/RoutineList';
+import { PopUpCode } from '../../enums/popUp/popUp';
+import { CardSkeleton } from '../../components/skeleton/skeleton';
+import { Fab } from '@mui/material';
+import { PopupDialog } from '../../components/PopupDialog/PopupDialog';
+import { selectSessionsState } from '../../redux/states/session/session';
+import {
+  AddAndEditSessionAction,
+  deleteSessionAction,
+  fetchSessionsByRoutineAction,
+  getExerciseByIdSession,
+  linkExerciseToSessionAction,
+  resetSessions,
+  setSessionFormAction,
+  setSessionPopUpCodeAction,
+  unlinkExerciseFromSessionAction,
+} from '../../redux/actions/sessions/sessionsAction';
+import { SessionList } from './sessions/list/SessionList';
+import type { IRoutine } from '../../interfaces/routines/IRoutines';
+import { RoutineSessionsForm } from './sessions/form/RoutineSessionsSection';
+import type { ISession } from '../../interfaces/ISession/ISession';
+import { selectExercisesState } from '../../redux/states/exercises/exercisesState';
+import { setExerciseFormAction, setExercisePopUpCodeAction } from '../../redux/actions/exercises/exercisesActions';
+import { LinkExerciseDialog } from './exercices/form/LinkExerciseDialog';
+import { ExerciseList } from './exercices/list/ExerciseList';
+import { setPreferencesHeaderTitle } from '../../redux/actions/preferences/preferencesActions';
+import type { IExercise } from '../../interfaces/IExercises/IExercises';
+import { ExerciseTrainingDataForm } from './exercices/detail/ExerciseTrainingDataForm';
+import routineHero01 from '../../assets/images/routines/routine-hero-01.jpg';
+import routineHero02 from '../../assets/images/routines/routine-hero-02.jpg';
+import routineHero03 from '../../assets/images/routines/routine-hero-03.jpg';
+import routineHero04 from '../../assets/images/routines/routine-hero-04.jpg';
+import routineHero05 from '../../assets/images/routines/routine-hero-05.jpg';
+import routineHero06 from '../../assets/images/routines/routine-hero-06.jpg';
+import sessionPlaceholder01 from '../../assets/images/sessions/session-placeholder-01.svg';
+import sessionPlaceholder02 from '../../assets/images/sessions/session-placeholder-02.svg';
+import sessionPlaceholder03 from '../../assets/images/sessions/session-placeholder-03.svg';
+import sessionPlaceholder04 from '../../assets/images/sessions/session-placeholder-04.svg';
+
+type StepperKey = 'routine' | 'session' | 'exercise' | 'exerciseData';
+
+const SKELETON_CARD_COUNT = 3;
+
+const ROUTINE_IMAGES = [
+  routineHero01,
+  routineHero02,
+  routineHero03,
+  routineHero04,
+  routineHero05,
+  routineHero06,
+];
+
+const SESSION_IMAGES = [
+  sessionPlaceholder01,
+  sessionPlaceholder02,
+  sessionPlaceholder03,
+  sessionPlaceholder04,
+];
+
+function buildSeed(input: string): number {
+  let hash = 0;
+  for (let i = 0; i < input.length; i += 1) {
+    hash = (hash << 5) - hash + input.charCodeAt(i);
+    hash |= 0;
+  }
+  return Math.abs(hash);
+}
 
 export function RoutinesPage() {
-  const { t } = useTranslation();
   const dispatch = useDispatch<AppDispatch>();
-  const { list, loading, error, popUpCode, selectedRoutine, filters } = useSelector(selectRoutinesState);
-  const filteredRoutines = useSelector(selectFilteredRoutines);
-  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
-  const [selectedExerciseId, setSelectedExerciseId] = useState<string | null>(null);
-  const [openSessionDialog, setOpenSessionDialog] = useState(false);
+  const { loading: loadingRoutine, popUpCode: routinesPopUpCode, table, form: formRoutines } = useSelector(selectRoutinesState);
+  const { loading: loadingSessions, popUpCode: sessionsPopUpCode, table: sessionsTable, form: formSessions } = useSelector(selectSessionsState);
+  const { loading: loadingExercises, table: exercisesTable, popUpCode: exercisesPopUpCode, form: formExercises } = useSelector(selectExercisesState);
+  const sessionsItems = Array.isArray(sessionsTable?.items) ? sessionsTable.items : [];
+  const exercises = Array.isArray(exercisesTable?.items) ? exercisesTable.items : [];
+  const hasRoutines = table.items.length > 0;
+  const hasSessions = sessionsItems.length > 0;
+  const hasExercises = exercises.length > 0;
+  const linkedExerciseIds = exercises
+    .map((exercise) => exercise.id ?? '')
+    .filter((id): id is string => Boolean(id));
+  const [stepperKey, setStepperKey] = useState<StepperKey>('routine');
 
   useEffect(() => {
-    dispatch(restoreTrainingFlowAction());
+    dispatch(fetchRoutinesPage());
   }, [dispatch]);
 
   useEffect(() => {
-    dispatch(fetchRoutines(filters.status !== 'active'));
-  }, [dispatch, filters.status]);
-
-  const selectedSession = useMemo(() => {
-    if (!selectedRoutine || !selectedSessionId) {
-      return null;
+    if (stepperKey !== 'session' || !formRoutines.id) {
+      return;
     }
 
-    return selectedRoutine.sessions.find((session) => session.id === selectedSessionId) ?? null;
-  }, [selectedRoutine, selectedSessionId]);
+    dispatch(fetchSessionsByRoutineAction(formRoutines.id));
+  }, [dispatch, formRoutines.id, stepperKey]);
 
-  const selectedExercise = useMemo(() => {
-    if (!selectedSession || !selectedExerciseId) {
-      return null;
-    }
-
-    return selectedSession.exercises.find((exercise) => exercise.id === selectedExerciseId) ?? null;
-  }, [selectedSession, selectedExerciseId]);
-
-  const showBackButton = selectedRoutine !== null;
+  const showBackButton = stepperKey !== 'routine';
 
   const headerTitle = useMemo(() => {
-    if (!selectedRoutine) {
-      return 'Rutinas';
+    if (stepperKey === 'session') {
+      return 'Sesiones';
     }
 
-    if (selectedExercise) {
-      return `Sets de ${selectedExercise.name}`;
+    if (stepperKey === 'exercise' || stepperKey === 'exerciseData') {
+      return 'Ejercicios';
     }
 
-    if (selectedSession) {
-      return `Ejercicios de ${selectedSession.name}`;
-    }
+    return 'Rutinas';
 
-    return `Detalle: ${selectedRoutine.title}`;
-  }, [selectedRoutine, selectedSession, selectedExercise]);
+  }, [stepperKey]);
+
+  useEffect(() => {
+    dispatch(setPreferencesHeaderTitle(headerTitle));
+
+    return () => {
+      dispatch(setPreferencesHeaderTitle(''));
+    };
+  }, [dispatch, headerTitle]);
 
   const backLabel = useMemo(() => {
-    if (selectedExercise) {
+    if (stepperKey === 'exerciseData') {
       return 'Volver a ejercicios';
     }
 
-    if (selectedSession) {
+    if (stepperKey === 'exercise') {
       return 'Volver a sesiones';
     }
 
+    if (stepperKey === 'session') {
+      return 'Volver a rutinas';
+    }
+
     return 'Volver a rutinas';
-  }, [selectedSession, selectedExercise]);
+  }, [stepperKey]);
 
   const handleBackNavigation = () => {
-    if (selectedExercise) {
-      setSelectedExerciseId(null);
+
+    if (stepperKey === 'routine') {
+      dispatch(fetchRoutinesPage());
       return;
     }
 
-    if (selectedSession) {
-      setSelectedSessionId(null);
-      setSelectedExerciseId(null);
+    if (stepperKey === 'session') {
+      dispatch(setRoutineFormAction());
+      dispatch(setSessionFormAction());
+      dispatch(resetSessions());
+      dispatch(fetchRoutinesPage());
+      setStepperKey('routine');
+      return;
+    }
+    if (stepperKey === 'exercise') {
+      dispatch(setSessionFormAction());
+      setStepperKey('session');
+
       return;
     }
 
-    if (selectedRoutine) {
-      setSelectedSessionId(null);
-      setSelectedExerciseId(null);
-      dispatch(cancelTrainingFlowAction());
-      dispatch(setSelectedRoutine(null));
-      dispatch(fetchRoutines(filters.status !== 'active'));
+    if (stepperKey === 'exerciseData') {
+      setStepperKey('exercise');
+
+      return;
     }
+  };
+  const handleNavigation = (key: StepperKey, data: IRoutine | ISession | IExercise | null) => {
+    if (key === 'routine') {
+      setStepperKey(key);
+      return;
+    } else if (key === 'session') {
+      if (!data) {
+        return;
+      }
+
+      dispatch(setRoutineFormAction(data as IRoutine));
+      setStepperKey(key);
+      return;
+    } else if (key === 'exercise') {
+      if (!data) {
+        return;
+      }
+
+      dispatch(setSessionFormAction(data as ISession));
+      setStepperKey(key);
+      dispatch(getExerciseByIdSession(formRoutines.id ?? '', (data as ISession).id ?? ''));
+
+
+      return;
+    } else if (key === 'exerciseData') {
+      if (!data) {
+        return;
+      }
+
+      dispatch(setExerciseFormAction(data as IExercise));
+      setStepperKey(key);
+      return;
+    }
+
   };
 
-  // Handler for session creation
-  const handleCreateSession = (name: string, days: string[]) => {
-    if (selectedRoutine) {
-      dispatch(createSessionAction(selectedRoutine.id, name, days));
+  const handleCreate = () => {
+    const key = stepperKey;
+
+    if (key === 'routine') {
+      dispatch(setRoutinePopUpCodeAction(PopUpCode.Create));
+    } else if (key === 'session') {
+
+      dispatch(setSessionPopUpCodeAction(PopUpCode.Create));
+    } else if (key === 'exercise') {
+      dispatch(setExercisePopUpCodeAction(PopUpCode.Create));
     }
-  };
+  }
+
+
+  const handleConfirmAction = () => {
+    const key = stepperKey;
+    if (key === 'routine') {
+      dispatch(deleteRoutineAction(formRoutines.id ?? ''));
+    } else if (key === 'session') {
+      if (formRoutines.id && formSessions.id) {
+        dispatch(deleteSessionAction(formRoutines.id, formSessions.id));
+      }
+    } else if (key === 'exercise') {
+      if (formRoutines.id && formSessions.id && formExercises.id) {
+        dispatch(unlinkExerciseFromSessionAction(formRoutines.id, formSessions.id, formExercises.id));
+      }
+    }
+
+    handleCancelRemove();
+  }
+
+  const handleCancelRemove = () => {
+    const key = stepperKey;
+    if (key === 'routine') {
+      dispatch(setRoutinePopUpCodeAction(PopUpCode.Default));
+    } else if (key === 'session') {
+      dispatch(setSessionPopUpCodeAction(PopUpCode.Default));
+    } else if (key === 'exercise') {
+      dispatch(setExercisePopUpCodeAction(PopUpCode.Default));
+    }
+  }
+
+  const selectedRoutineName = formRoutines?.name?.trim() || formRoutines?.description?.trim() || 'Rutina seleccionada';
+  const selectedRoutineDescription = formRoutines?.description?.trim() || 'Selecciona una sesion para continuar con tus ejercicios.';
+  const selectedRoutineImage = (formRoutines as IRoutine & { imageUrl?: string })?.imageUrl?.trim()
+    || ROUTINE_IMAGES[buildSeed(formRoutines?.id || selectedRoutineName) % ROUTINE_IMAGES.length];
+  const selectedSessionName = formSessions?.name?.trim() || 'Sesion seleccionada';
+  const selectedSessionImage = SESSION_IMAGES[buildSeed(formSessions?.id || selectedSessionName) % SESSION_IMAGES.length];
+  const selectedSessionDays = Array.isArray(formSessions?.daysOfWeek)
+    ? formSessions.daysOfWeek
+      .map((day) => day?.trim())
+      .filter((day): day is string => Boolean(day))
+      .map((day) => {
+        const key = day.toLowerCase();
+        if (['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].includes(key)) {
+          return key;
+        }
+
+        return null;
+      })
+      .filter((day): day is string => Boolean(day))
+      .map((day) => {
+        const labels: Record<string, string> = {
+          monday: 'Lunes',
+          tuesday: 'Martes',
+          wednesday: 'Miercoles',
+          thursday: 'Jueves',
+          friday: 'Viernes',
+          saturday: 'Sabado',
+          sunday: 'Domingo',
+        };
+
+        return labels[day] ?? day;
+      })
+    : [];
+  const selectedSessionMeta = selectedSessionDays.length > 0
+    ? `${selectedSessionDays.join(', ')} • ${formSessions?.countExercices ?? 0} ejercicios`
+    : `${formSessions?.countExercices ?? 0} ejercicios`;
 
   return (
-    <Container maxWidth={false} sx={{ py: 2 }}>
-      <Stack spacing={2}>
-        <Stack direction="row" justifyContent="space-between" alignItems="center">
-          <Stack direction="row" alignItems="center" spacing={1}>
-            {showBackButton ? (
-              <Button startIcon={<ArrowBackIcon />} onClick={handleBackNavigation}>
+    <Container
+      maxWidth={false}
+      disableGutters
+      sx={{
+        pt: showBackButton ? 1 : 3,
+        pb: 1,
+        display: 'flex',
+        flexDirection: 'column',
+        height: '100%',
+        minHeight: 0,
+        boxSizing: 'border-box',
+        overflow: 'hidden',
+        px: 0,
+      }}
+    >
+      <Stack
+        spacing={2}
+        sx={{
+          height: '100%',
+          minHeight: 0,
+          flex: 1,
+          overflow: 'hidden',
+
+        }}
+      >
+        {showBackButton ? (
+          <Stack direction="row" justifyContent="space-between" alignItems="center"
+            sx={{
+              borderBottom: '1px solid',
+              borderColor: 'divider',
+              py: 0.5,
+              px: appLayoutTokens.contentX,
+            }}>
+
+            <Stack direction="row" alignItems="center" spacing={2} sx={{ flex: 1, minWidth: 0 }}>
+              <Button
+                startIcon={<ArrowBackIcon />}
+                onClick={handleBackNavigation}
+                color="warning"
+                sx={{
+                  textTransform: 'none',
+                  fontWeight: 700,
+                  px: 0.5,
+                  minWidth: 'auto',
+                }}
+              >
                 {backLabel}
               </Button>
-            ) : null}
-            <Typography variant={showBackButton ? 'h6' : 'h4'} fontWeight={700}>{headerTitle}</Typography>
+            </Stack>
+
+            <IconButton size="small" color="inherit" aria-label="Más opciones" sx={{ ml: 1 }}>
+              <MoreVertRoundedIcon />
+            </IconButton>
           </Stack>
-          {!selectedRoutine ? <Filters /> : null}
-        </Stack>
+        ) : null}
 
-        {!selectedRoutine ? (
-          <>
-            {loading ? <CircularProgress /> : null}
-            {!loading && error ? <FeedbackMessage type="error" message={error} /> : null}
-            {!loading && !error && list.length === 0 ? (
-              <FeedbackMessage type="empty" message={t('common.messages.noResults')} />
-            ) : null}
 
-            <Stack spacing={2} direction="row" flexWrap="wrap" justifyContent="center">
+        {stepperKey === 'routine' ? (
+          loadingRoutine ? (
+            <Box sx={(theme) => ({
+              px: appLayoutTokens.contentX,
+              pb: `calc(${theme.spacing(appLayoutTokens.fabPosition.bottom.xs)} + ${theme.spacing(9)} + env(safe-area-inset-bottom, 0px))`,
+              overflowY: 'auto',
+            })}>
+              <Stack spacing={2}>
+                {Array.from({ length: SKELETON_CARD_COUNT }).map((_, index) => (
+                  <CardSkeleton key={`routine-skeleton-${index}`} cardHeight={160} />
+                ))}
+              </Stack>
+            </Box>
+          ) : (<Box sx={(theme) => ({
+            flex: 1,
+            minHeight: 0,
+            overflowY: hasRoutines ? 'auto' : 'hidden',
+            px: appLayoutTokens.contentX,
+            height: '100%',
+            display: hasRoutines ? 'block' : 'flex',
+            pb: {
+              xs: hasRoutines
+                ? `calc(${theme.spacing(appLayoutTokens.fabPosition.bottom.xs)} + ${theme.spacing(9)} + env(safe-area-inset-bottom, 0px))`
+                : 0,
+              md: hasRoutines
+                ? `calc(${theme.spacing(appLayoutTokens.fabPosition.bottom.md)} + ${theme.spacing(9)} + env(safe-area-inset-bottom, 0px))`
+                : 0,
+            },
+          })}>
+            {!hasRoutines ? (
+              <FeedbackMessageSpotlight
+                type="empty"
+                message="No se encontraron rutinas. Crea tu primera rutina para empezar a entrenar!"
+                fullHeight
+              />
+            ) : (
               <RoutineList
-                routines={filteredRoutines}
-                onRoutineSelect={(id: string) => {
-                  setSelectedSessionId(null);
-                  setSelectedExerciseId(null);
-                  dispatch(loadRoutineDetail(id));
+                routines={table.items}
+                onRoutineSelect={(routine: IRoutine) => {
+                  handleNavigation('session', routine);
                 }}
               />
-            </Stack>
-          </>
+            )}
+          </Box>)
         ) : null}
 
-        {/* Floating button for creating a new routine */}
-        {!selectedRoutine && (
-          <Fab
-            color="primary"
-            aria-label="Nueva rutina"
-            sx={{ position: 'fixed', right: 32, bottom: 80, zIndex: 1200 }}
-            onClick={() => dispatch(setRoutinesPopUpCode('create'))}
-          >
-            <AddIcon />
-          </Fab>
-        )}
-
-        {selectedRoutine && !selectedSession ? (
-          <>
-            <Typography variant="h6">Sesiones</Typography>
-            <SessionList
-              sessions={selectedRoutine.sessions}
-              onSessionSelect={(id: string) => {
-                setSelectedSessionId(id);
-                setSelectedExerciseId(null);
+        {stepperKey === 'session' ? (
+          loadingSessions ? (
+            <Box sx={(theme) => ({
+              px: appLayoutTokens.contentX,
+              pb: `calc(${theme.spacing(appLayoutTokens.fabPosition.bottom.xs)} + ${theme.spacing(9)} + env(safe-area-inset-bottom, 0px))`,
+              overflowY: 'auto',
+            })}>
+              <Stack spacing={2}>
+                {Array.from({ length: SKELETON_CARD_COUNT }).map((_, index) => (
+                  <CardSkeleton key={`session-skeleton-${index}`} cardHeight={160} />
+                ))}
+              </Stack>
+            </Box>
+          ) : (<Box sx={{
+            flex: 1,
+            minHeight: 0,
+            overflow: 'hidden',
+            height: '100%',
+            px: appLayoutTokens.contentX,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 1.5,
+          }}>
+            <Card
+              variant="outlined"
+              sx={{
+                position: 'relative',
+                overflow: 'hidden',
+                borderRadius: 3,
+                border: '1px solid rgba(255,255,255,0.14)',
+                color: 'common.white',
+                boxShadow: '0 10px 24px rgba(0,0,0,0.24)',
+                minHeight: 86,
+                flexShrink: 0,
               }}
-            />
-          </>
+            >
+              <Box
+                sx={{
+                  position: 'absolute',
+                  inset: 0,
+                  overflow: 'hidden',
+                  pointerEvents: 'none',
+                }}
+              >
+                <Box
+                  component="img"
+                  src={selectedRoutineImage}
+                  alt=""
+                  aria-hidden="true"
+                  sx={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center' }}
+                />
+                <Box
+                  sx={{
+                    position: 'absolute',
+                    inset: 0,
+                    background: 'linear-gradient(90deg, rgba(5,8,14,0.72) 0%, rgba(5,8,14,0.46) 55%, rgba(5,8,14,0.68) 100%)',
+                  }}
+                />
+              </Box>
+
+              <Stack direction="row" spacing={1.2} alignItems="center" sx={{ minWidth: 0, px: 1.5, py: 1.35, position: 'relative' }}>
+                <Box
+                  sx={{
+                    width: 40,
+                    height: 40,
+                    borderRadius: '50%',
+                    bgcolor: alpha('#66BB6A', 0.9),
+                    color: 'common.white',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                  }}
+                >
+                  <FitnessCenterOutlinedIcon sx={{ fontSize: 21 }} />
+                </Box>
+
+                <Stack spacing={0.2} sx={{ minWidth: 0 }}>
+                  <Typography
+                    variant="h6"
+                    sx={{
+                      fontSize: { xs: '1.1rem', sm: '1.25rem' },
+                      fontWeight: 700,
+                      color: 'rgba(255,255,255,0.98)',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {selectedRoutineName}
+                  </Typography>
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      color: 'rgba(255,255,255,0.74)',
+                      fontSize: '0.88rem',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {selectedRoutineDescription}
+                  </Typography>
+                </Stack>
+              </Stack>
+            </Card>
+
+            <Typography
+              variant="h6"
+              sx={{
+                px: 0.5,
+                fontWeight: 700,
+                color: 'text.primary',
+                flexShrink: 0,
+              }}
+            >
+              Sesiones de la rutina
+            </Typography>
+
+            {
+              !hasSessions ? (
+                <Box sx={{ flex: 1, minHeight: 0, display: 'flex' }}>
+                  <FeedbackMessageSpotlight
+                    type="empty"
+                    message="No se encontraron sesiones para esta rutina. Crea tu primera sesion para empezar a entrenar!"
+                    fullHeight
+                  />
+                </Box>
+              ) : (<SessionList
+                routineTitle={formRoutines?.name ?? formRoutines?.description}
+                sessions={sessionsItems}
+                onSessionSelect={(session: ISession) => {
+                  handleNavigation('exercise', session);
+                }} />
+              )
+            }
+          </Box>)
         ) : null}
 
-        {selectedRoutine && selectedSession && !selectedExercise ? (
-          <>
-            <ExerciseList
-              exercises={selectedSession.exercises}
-              onExerciseSelect={(id: string) => setSelectedExerciseId(id)}
-            />
-          </>
+        {stepperKey === 'exercise' ? (
+          loadingExercises ? (
+            <Box sx={{ px: appLayoutTokens.contentX }}>
+              <Stack spacing={2}>
+                {Array.from({ length: SKELETON_CARD_COUNT }).map((_, index) => (
+                  <CardSkeleton key={`exercise-skeleton-${index}`} cardHeight={160} />
+                ))}
+              </Stack>
+            </Box>
+          ) : (<Box sx={{
+            flex: 1,
+            minHeight: 0,
+            overflow: 'hidden',
+            height: '100%',
+            px: appLayoutTokens.contentX,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 1.5,
+          }}>
+            <Card
+              variant="outlined"
+              sx={{
+                position: 'relative',
+                overflow: 'hidden',
+                borderRadius: 3,
+                border: '1px solid rgba(255,255,255,0.14)',
+                color: 'common.white',
+                boxShadow: '0 10px 24px rgba(0,0,0,0.24)',
+                minHeight: 86,
+                flexShrink: 0,
+              }}
+            >
+              <Box
+                sx={{
+                  position: 'absolute',
+                  inset: 0,
+                  overflow: 'hidden',
+                  pointerEvents: 'none',
+                }}
+              >
+                <Box
+                  component="img"
+                  src={selectedSessionImage}
+                  alt=""
+                  aria-hidden="true"
+                  sx={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center' }}
+                />
+                <Box
+                  sx={{
+                    position: 'absolute',
+                    inset: 0,
+                    background: 'linear-gradient(90deg, rgba(5,8,14,0.72) 0%, rgba(5,8,14,0.46) 55%, rgba(5,8,14,0.68) 100%)',
+                  }}
+                />
+              </Box>
+
+              <Stack direction="row" spacing={1.2} alignItems="center" sx={{ minWidth: 0, px: 1.5, py: 1.35, position: 'relative' }}>
+                <Box
+                  sx={{
+                    width: 40,
+                    height: 40,
+                    borderRadius: '50%',
+                    bgcolor: alpha('#42A5F5', 0.9),
+                    color: 'common.white',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                  }}
+                >
+                  <PlayArrowRoundedIcon sx={{ fontSize: 22 }} />
+                </Box>
+
+                <Stack spacing={0.2} sx={{ minWidth: 0 }}>
+                  <Typography
+                    variant="h6"
+                    sx={{
+                      fontSize: { xs: '1.1rem', sm: '1.25rem' },
+                      fontWeight: 700,
+                      color: 'rgba(255,255,255,0.98)',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {selectedSessionName}
+                  </Typography>
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      color: 'rgba(255,255,255,0.74)',
+                      fontSize: '0.88rem',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {selectedSessionMeta}
+                  </Typography>
+                </Stack>
+              </Stack>
+            </Card>
+
+            <Typography
+              variant="h6"
+              sx={{
+                px: 0.5,
+                fontWeight: 700,
+                color: 'text.primary',
+                flexShrink: 0,
+              }}
+            >
+              Ejercicios de la sesion
+            </Typography>
+
+            {
+              !hasExercises ? (
+                <Box sx={{ flex: 1, minHeight: 0, display: 'flex' }}>
+                  <FeedbackMessageSpotlight
+                    type="empty"
+                    message="No se encontraron ejercicios para esta sesion. Crea tu primer ejercicio para empezar a entrenar!"
+                    fullHeight
+                  />
+                </Box>
+              ) : (<ExerciseList
+                onExerciseSelect={(exercise: IExercise) => {
+                  handleNavigation('exerciseData', exercise);
+                }}
+              />
+              )
+            }
+          </Box>)
         ) : null}
 
-        {selectedRoutine && selectedSession && selectedExercise ? (
-          <>
-            <SessionExerciseCard
-              exercise={selectedExercise}
-              onUnlink={(exerciseId) => dispatch(unlinkSessionExerciseAction(selectedRoutine.id, selectedSession.id, exerciseId))}
-              onUpdateSet={(exerciseId, setId, repetitions, weightKg) =>
-                dispatch(updatePlannedSetAction(selectedRoutine.id, selectedSession.id, exerciseId, setId, repetitions, weightKg))}
-              onDeleteSet={(exerciseId, setId) =>
-                dispatch(deletePlannedSetAction(selectedRoutine.id, selectedSession.id, exerciseId, setId))}
-            />
-          </>
+        {stepperKey === 'exerciseData' ? (
+          <Box sx={{
+            flex: 1,
+            minHeight: 0,
+            overflow: 'hidden',
+            height: '100%',
+            px: appLayoutTokens.contentX,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 1.5,
+          }}>
+            <Card
+              variant="outlined"
+              sx={{
+                position: 'relative',
+                overflow: 'hidden',
+                borderRadius: 3,
+                border: '1px solid rgba(255,255,255,0.14)',
+                color: 'common.white',
+                boxShadow: '0 10px 24px rgba(0,0,0,0.24)',
+                minHeight: 86,
+                flexShrink: 0,
+              }}
+            >
+              <Box
+                sx={{
+                  position: 'absolute',
+                  inset: 0,
+                  overflow: 'hidden',
+                  pointerEvents: 'none',
+                }}
+              >
+                <Box
+                  component="img"
+                  src={selectedSessionImage}
+                  alt=""
+                  aria-hidden="true"
+                  sx={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center' }}
+                />
+                <Box
+                  sx={{
+                    position: 'absolute',
+                    inset: 0,
+                    background: 'linear-gradient(90deg, rgba(5,8,14,0.72) 0%, rgba(5,8,14,0.46) 55%, rgba(5,8,14,0.68) 100%)',
+                  }}
+                />
+              </Box>
+
+              <Stack direction="row" spacing={1.2} alignItems="center" sx={{ minWidth: 0, px: 1.5, py: 1.35, position: 'relative' }}>
+                <Box
+                  sx={{
+                    width: 40,
+                    height: 40,
+                    borderRadius: '50%',
+                    bgcolor: alpha('#FFB74D', 0.9),
+                    color: 'common.white',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                  }}
+                >
+                  <FitnessCenterOutlinedIcon sx={{ fontSize: 22 }} />
+                </Box>
+
+                <Stack spacing={0.2} sx={{ minWidth: 0 }}>
+                  <Typography
+                    variant="h6"
+                    sx={{
+                      fontSize: { xs: '1.1rem', sm: '1.25rem' },
+                      fontWeight: 700,
+                      color: 'rgba(255,255,255,0.98)',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {formExercises?.name?.trim() || 'Ejercicio seleccionado'}
+                  </Typography>
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      color: 'rgba(255,255,255,0.74)',
+                      fontSize: '0.88rem',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    Registro de entrenamiento del dia
+                  </Typography>
+                </Stack>
+              </Stack>
+            </Card>
+
+            <Box sx={{ flex: 1, minHeight: 0, overflow: 'auto' }}>
+              <ExerciseTrainingDataForm
+                routineId={formRoutines.id ?? ''}
+                sessionId={formSessions.id ?? ''}
+                exerciseId={formExercises.id ?? ''}
+              />
+            </Box>
+          </Box>
         ) : null}
       </Stack>
 
       <RoutineFormDialog
-        open={popUpCode === 'create'}
-        onClose={() => dispatch(setRoutinesPopUpCode(null))}
-        onSubmit={(title, goal) => {
-          dispatch(createRoutineAction(title, goal, filters.status !== 'active'));
-          dispatch(setRoutinesPopUpCode(null));
+        open={routinesPopUpCode === PopUpCode.Create || routinesPopUpCode === PopUpCode.Update}
+        onClose={() => dispatch(setRoutinePopUpCodeAction(PopUpCode.Default))}
+        onSubmit={(routine) => {
+          dispatch(AddAndEditRoutineAction(routine));
         }}
       />
 
-      {/* Floating button for creating sessions, only when viewing routine detail (not session or exercise) */}
-      {selectedRoutine && !selectedSession && (
-        <>
-          <RoutineSessionsSection
-            routine={selectedRoutine}
-            onCreateSession={handleCreateSession}
-            openDialog={openSessionDialog}
-            setOpenDialog={setOpenSessionDialog}
-          />
-          <Fab
-            color="primary"
-            aria-label="Crear sesión"
-            sx={{ position: 'fixed', right: 32, bottom: 80, zIndex: 1200 }}
-            onClick={() => setOpenSessionDialog(true)}
-          >
-            <AddIcon />
-          </Fab>
-        </>
-      )}
+      {formRoutines ? (
+        <RoutineSessionsForm
+          onCreate={(session) => {
+            dispatch(AddAndEditSessionAction(formRoutines.id ?? '', session))
+          }}
+          open={(sessionsPopUpCode === PopUpCode.Create || sessionsPopUpCode === PopUpCode.Update) && stepperKey === 'session'}
+          onClose={() => dispatch(setSessionPopUpCodeAction(PopUpCode.Default))} />
+      ) : null}
+
+      <LinkExerciseDialog
+        open={exercisesPopUpCode === PopUpCode.Create}
+        linkedExerciseIds={linkedExerciseIds}
+        onClose={() => dispatch(setExercisePopUpCodeAction(PopUpCode.Default))}
+        onLink={(exerciseId, name) => {
+          if (!formRoutines.id || !formSessions.id) {
+            return;
+          }
+
+          dispatch(linkExerciseToSessionAction(formRoutines.id, formSessions.id, exerciseId, name));
+        }}
+      />
+
+
+      <PopupDialog
+        open={routinesPopUpCode === PopUpCode.Delete || sessionsPopUpCode === PopUpCode.Delete || exercisesPopUpCode === PopUpCode.Delete}
+        title={'Confirmar eliminacion'}
+        onClose={handleCancelRemove}
+        onSubmit={handleConfirmAction}
+        closeLabel="Cancelar"
+        saveLabel={'Eliminar'}
+      >
+        <Typography variant="body2">
+
+          {`Esta accion eliminara la ${stepperKey} seleccionada de la vista activa. Podras restaurarla mas adelante si lo necesitas.`}
+        </Typography>
+      </PopupDialog>
+
+
+
+      <Fab
+        color="primary"
+        aria-label="Crear nueva sesión"
+        onClick={handleCreate}
+        sx={(theme) => ({
+          position: 'fixed',
+          right: {
+            xs: theme.spacing(appLayoutTokens.fabPosition.right.xs),
+            md: theme.spacing(appLayoutTokens.fabPosition.right.md),
+          },
+          bottom: {
+            xs: theme.spacing(appLayoutTokens.fabPosition.bottom.xs),
+            md: theme.spacing(appLayoutTokens.fabPosition.bottom.md),
+          },
+          zIndex: theme.zIndex.speedDial,
+        })}
+      >
+        <AddIcon />
+      </Fab>
     </Container>
   );
 }

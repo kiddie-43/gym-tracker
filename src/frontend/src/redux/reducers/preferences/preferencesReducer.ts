@@ -1,6 +1,7 @@
 import { createReducer } from '@reduxjs/toolkit';
 
 import {
+  setPreferencesHeaderTitle,
   setPreferencesProfile,
   setPreferencesThemeMode,
 } from '../../actions/preferences/preferencesActions';
@@ -13,5 +14,8 @@ export const preferencesReducer = createReducer(preferencesInitialState, (builde
     })
     .addCase(setPreferencesProfile, (state, action) => {
       state.profile = action.payload;
+    })
+    .addCase(setPreferencesHeaderTitle, (state, action) => {
+      state.headerTitle = action.payload;
     });
 });

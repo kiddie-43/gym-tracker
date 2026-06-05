@@ -133,6 +133,29 @@ paths:
           description: Conflicto de regla de dias por sesion
 
   /api/routines/{routineId}/sessions/{sessionId}/exercises:
+    get:
+      tags: [Routine Sessions]
+      summary: Obtener ejercicios vinculados de una sesion
+      parameters:
+        - $ref: '#/components/parameters/RoutineId'
+        - $ref: '#/components/parameters/SessionId'
+      responses:
+        '200':
+          description: Listado de ejercicios vinculados a la sesion
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/SessionExercise'
+                  total:
+                    type: integer
+                required: [items, total]
+        '404':
+          $ref: '#/components/responses/NotFound'
     post:
       tags: [Routine Sessions]
       summary: Agregar ejercicio de catalogo a sesion
@@ -168,46 +191,6 @@ paths:
       responses:
         '204':
           description: Ejercicio desvinculado de la sesion
-        '404':
-          $ref: '#/components/responses/NotFound'
-
-  /api/routines/{routineId}/sessions/{sessionId}/exercises/{exerciseId}/planned-sets/{setId}:
-    patch:
-      tags: [Routine Sessions]
-      summary: Editar serie planificada de ejercicio
-      parameters:
-        - $ref: '#/components/parameters/RoutineId'
-        - $ref: '#/components/parameters/SessionId'
-        - $ref: '#/components/parameters/ExerciseId'
-        - $ref: '#/components/parameters/SetId'
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/UpdatePlannedSetRequest'
-      responses:
-        '200':
-          description: Serie planificada actualizada
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/PerformedSet'
-        '400':
-          $ref: '#/components/responses/ValidationError'
-        '404':
-          $ref: '#/components/responses/NotFound'
-    delete:
-      tags: [Routine Sessions]
-      summary: Eliminar serie planificada de ejercicio
-      parameters:
-        - $ref: '#/components/parameters/RoutineId'
-        - $ref: '#/components/parameters/SessionId'
-        - $ref: '#/components/parameters/ExerciseId'
-        - $ref: '#/components/parameters/SetId'
-      responses:
-        '204':
-          description: Serie planificada eliminada
         '404':
           $ref: '#/components/responses/NotFound'
 
@@ -345,12 +328,6 @@ components:
       required: true
       schema:
         type: string
-    SetId:
-      name: setId
-      in: path
-      required: true
-      schema:
-        type: string
     ExerciseIdQuery:
       name: exerciseId
       in: query
@@ -373,7 +350,7 @@ components:
   schemas:
     RoutineCard:
       type: object
-      required: [id, title, createdAt, exerciseCount]
+      required: [id, title, createdAt, exerciseCount, totalSessions, totalExercises]
       properties:
         id:
           type: string
@@ -383,6 +360,12 @@ components:
           type: string
           format: date-time
         exerciseCount:
+          type: integer
+          minimum: 0
+        totalSessions:
+          type: integer
+          minimum: 0
+        totalExercises:
           type: integer
           minimum: 0
 
@@ -451,7 +434,7 @@ components:
 
     SessionExercise:
       type: object
-      required: [id, exerciseId, name, plannedSets]
+      required: [id, exerciseId, name]
       properties:
         id:
           type: string
@@ -459,10 +442,6 @@ components:
           type: string
         name:
           type: string
-        plannedSets:
-          type: array
-          items:
-            $ref: '#/components/schemas/PerformedSet'
 
     CreateSessionRequest:
       type: object
@@ -478,17 +457,6 @@ components:
           items:
             type: string
             enum: [monday, tuesday, wednesday, thursday, friday, saturday, sunday]
-
-    UpdatePlannedSetRequest:
-      type: object
-      required: [repetitions, weightKg]
-      properties:
-        repetitions:
-          type: integer
-          minimum: 1
-        weightKg:
-          type: number
-          exclusiveMinimum: 0
 
     StartTrainingFlowRequest:
       type: object

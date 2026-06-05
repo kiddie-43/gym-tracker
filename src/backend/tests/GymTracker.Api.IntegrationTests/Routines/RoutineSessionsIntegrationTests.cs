@@ -19,10 +19,12 @@ public sealed class RoutineSessionsIntegrationTests : IClassFixture<WebApplicati
         _client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", "integration-user-sessions-v2");
     }
 
+    private sealed record SessionsListResponse(RoutineSessionDto[] Items, int Total);
+
     [Fact]
     public async Task PostSessions_ShouldCreateAndRejectConflictingDays()
     {
-        var createRoutineResponse = await _client.PostAsJsonAsync("/api/routines", new CreateRoutineDto("Pull", "Goal"));
+        var createRoutineResponse = await _client.PostAsJsonAsync("/api/routines", new CreateRoutineDto { Name = "Pull", Goal = "Goal" });
         var routine = await createRoutineResponse.Content.ReadFromJsonAsync<RoutineDetailDto>();
 
         var createFirst = await _client.PostAsJsonAsync(
@@ -36,5 +38,32 @@ public sealed class RoutineSessionsIntegrationTests : IClassFixture<WebApplicati
             new CreateRoutineSessionDto("Dia B", new[] { "monday" }));
 
         createConflict.StatusCode.Should().Be(HttpStatusCode.Conflict);
+    }
+
+    [Fact]
+    public async Task GetSessions_ShouldReturnSessionsForRoutine()
+    {
+        var createRoutineResponse = await _client.PostAsJsonAsync("/api/routines", new CreateRoutineDto { Name = "Push", Goal = "Goal" });
+        var routine = await createRoutineResponse.Content.ReadFromJsonAsync<RoutineDetailDto>();
+
+        var createSessionResponse = await _client.PostAsJsonAsync(
+            $"/api/routines/{routine!.Id}/sessions",
+            new CreateRoutineSessionDto("Dia A", new[] { "wednesday" }));
+
+        createSessionResponse.StatusCode.Should().Be(HttpStatusCode.Created);
+
+        var getSessionsResponse = await _client.GetAsync($"/api/routines/{routine.Id}/sessions");
+        getSessionsResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var sessionsPage = await getSessionsResponse.Content.ReadFromJsonAsync<SessionsListResponse>();
+        sessionsPage.Should().NotBeNull();
+        if (sessionsPage is null)
+        {
+            throw new InvalidOperationException("Expected sessions response body.");
+        }
+
+        sessionsPage.Total.Should().Be(1);
+        sessionsPage.Items.Should().ContainSingle();
+        sessionsPage.Items[0].Name.Should().Be("Dia A");
     }
 }

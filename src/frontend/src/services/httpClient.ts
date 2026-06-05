@@ -1,6 +1,6 @@
 import { i18n } from '../i18n/i18n';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5092';
+const API_BASE_URL = normalizeApiBaseUrl(import.meta.env.VITE_API_BASE_URL);
 const DEV_AUTH_TOKEN = import.meta.env.VITE_DEV_AUTH_TOKEN ?? 'integration-demo-user';
 
 export class ApiHttpError extends Error {
@@ -72,4 +72,19 @@ function hasHeader(headers: HeadersInit | undefined, headerName: string): boolea
   }
 
   return Object.keys(headers).some((name) => name.toLowerCase() === normalizedHeaderName);
+}
+
+function normalizeApiBaseUrl(rawBaseUrl: string | undefined): string {
+  const fallback = 'http://localhost:5092';
+  const trimmed = rawBaseUrl?.trim();
+
+  if (!trimmed) {
+    return fallback;
+  }
+
+  if (/^https?:\/\//i.test(trimmed)) {
+    return trimmed;
+  }
+
+  return `http://${trimmed}`;
 }

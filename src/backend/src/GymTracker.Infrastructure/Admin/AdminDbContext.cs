@@ -1,7 +1,8 @@
 using System.Text.Json;
-
+using GymTracker.Domain.Common;
 using GymTracker.Domain.Entities;
 
+using DomainUnit = GymTracker.Domain.Entities.Units;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
@@ -12,181 +13,296 @@ public sealed class AdminDbContext : DbContext
 {
     private static readonly JsonSerializerOptions JsonOptions = new();
 
-    private static readonly ValueConverter<IReadOnlyCollection<string>, string> StringCollectionConverter =
-        new(
-            v => JsonSerializer.Serialize(v, JsonOptions),
-            v => (IReadOnlyCollection<string>)(JsonSerializer.Deserialize<string[]>(v, JsonOptions) ?? Array.Empty<string>()));
-
-    private static readonly ValueComparer<IReadOnlyCollection<string>> StringCollectionComparer =
-        new(
-            (c1, c2) => c1 != null && c2 != null && c1.SequenceEqual(c2),
-            c => c.Aggregate(0, (a, v) => HashCode.Combine(a, v.GetHashCode())),
-            c => (IReadOnlyCollection<string>)c.ToList());
 
     public AdminDbContext(DbContextOptions<AdminDbContext> options) : base(options)
     {
     }
 
     public DbSet<Muscle> Muscles => Set<Muscle>();
-
-    public DbSet<MeasurementType> MeasurementTypes => Set<MeasurementType>();
-
-    public DbSet<Exercise> Exercises => Set<Exercise>();
-
-    public DbSet<ExercisePrimaryMuscle> ExercisePrimaryMuscles => Set<ExercisePrimaryMuscle>();
-
-    public DbSet<ExerciseSecondaryMuscle> ExerciseSecondaryMuscles => Set<ExerciseSecondaryMuscle>();
-
-    public DbSet<ExerciseMeasurementType> ExerciseMeasurementTypes => Set<ExerciseMeasurementType>();
-
+    public DbSet<DomainUnit> Units => Set<DomainUnit>();
+    public DbSet<TrainingLog> TrainingLogs => Set<TrainingLog>();
+    public DbSet<Example> Examples => Set<Example>();
+    public DbSet<Exercice> Exercices => Set<Exercice>();
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         ConfigureMuscle(modelBuilder);
-        ConfigureMeasurementType(modelBuilder);
-        ConfigureExercise(modelBuilder);
-        ConfigureExercisePrimaryMuscle(modelBuilder);
-        ConfigureExerciseSecondaryMuscle(modelBuilder);
-        ConfigureExerciseMeasurementType(modelBuilder);
+        ConfigureUnits(modelBuilder);
+        ConfigureExample(modelBuilder);
+        ConfigureTrainingLog(modelBuilder);
+        ConfigureAuditableEntities(modelBuilder);
+        ConfigureExercice(modelBuilder);
+        ConfigureExerciceMuscle(modelBuilder);
+        ConfigureExerciceUnit(modelBuilder);
     }
 
     private static void ConfigureMuscle(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<Muscle>(entity =>
         {
+            entity.ToTable("Muscles");
+
             entity.HasKey(e => e.Id);
-            entity.Property(e => e.Id).HasMaxLength(32).IsRequired();
-            entity.Property(e => e.Name).HasMaxLength(200).IsRequired();
-            entity.Property(e => e.Code).HasMaxLength(100).IsRequired();
-            entity.Property(e => e.Description).HasMaxLength(1000);
-            entity.Property(e => e.Active).IsRequired();
-            entity.Property(e => e.IsDeleted).IsRequired();
-            entity.Property(e => e.CreatedAt).IsRequired();
-            entity.Property(e => e.UpdatedAt).IsRequired();
-            entity.Property(e => e.MuscleGroupIds)
-                  .HasConversion(StringCollectionConverter)
-                  .HasColumnType("nvarchar(max)")
-                  .IsRequired()
-                  .Metadata.SetValueComparer(StringCollectionComparer);
+
+            entity.Property(e => e.Id)
+                .IsRequired();
+
+            entity.Property(e => e.Name)
+                .HasMaxLength(200)
+                .IsRequired();
+
+            entity.Property(e => e.Code)
+                .HasMaxLength(100)
+                .IsRequired();
+
+            entity.Property(e => e.Description)
+                .HasMaxLength(1000);
 
             entity.HasIndex(e => e.Code)
-                  .HasFilter("[IsDeleted] = 0")
-                  .IsUnique();
+                .HasFilter("[DeletedAt] IS NULL")
+                .IsUnique();
         });
     }
 
-    private static void ConfigureMeasurementType(ModelBuilder modelBuilder)
+    private static void ConfigureUnits(ModelBuilder modelBuilder)
     {
-        modelBuilder.Entity<MeasurementType>(entity =>
+        modelBuilder.Entity<DomainUnit>(entity =>
         {
-            entity.HasKey(e => e.Id);
-            entity.Property(e => e.Id).HasMaxLength(32).IsRequired();
-            entity.Property(e => e.Code).HasMaxLength(100).IsRequired();
-            entity.Property(e => e.Name).HasMaxLength(200).IsRequired();
-            entity.Property(e => e.Description).HasMaxLength(500);
-            entity.Property(e => e.Active).IsRequired();
-            entity.Property(e => e.IsDeleted).IsRequired();
-            entity.Property(e => e.CreatedAt).IsRequired();
-            entity.Property(e => e.UpdatedAt).IsRequired();
-            entity.HasIndex(e => e.Code).HasDatabaseName("IX_MeasurementTypes_Code");
-        });
-    }
+            entity.ToTable("Units");
 
-    private static void ConfigureExercise(ModelBuilder modelBuilder)
-    {
-        modelBuilder.Entity<Exercise>(entity =>
-        {
             entity.HasKey(e => e.Id);
-            entity.Property(e => e.Id).HasMaxLength(32).IsRequired();
-            entity.Property(e => e.Name).HasMaxLength(200).IsRequired();
-            entity.Property(e => e.Code).HasMaxLength(100);
-            entity.Property(e => e.Category).HasMaxLength(100).IsRequired();
-            entity.Property(e => e.Difficulty).HasMaxLength(100).IsRequired();
-            entity.Property(e => e.Active).IsRequired();
-            entity.Property(e => e.IsDeleted).IsRequired();
-            entity.Property(e => e.CreatedAt).IsRequired();
-            entity.Property(e => e.UpdatedAt).IsRequired();
-            entity.Ignore(e => e.PrimaryMuscleIds);
-            entity.Ignore(e => e.SecondaryMuscleIds);
-            entity.Ignore(e => e.MeasurementTypeIds);
+
+            entity.Property(e => e.Id)
+                .IsRequired();
+
+            entity.Property(e => e.Code)
+                .HasMaxLength(100)
+                .IsRequired();
+
+            entity.Property(e => e.Name)
+                .HasMaxLength(200)
+                .IsRequired();
+
+            entity.Property(e => e.Description)
+                .HasMaxLength(500);
 
             entity.HasIndex(e => e.Code)
-                  .HasFilter("[IsDeleted] = 0 AND [Code] IS NOT NULL")
-                  .IsUnique();
+                .HasDatabaseName("IX_Units_Code");
         });
     }
 
-    private static void ConfigureExercisePrimaryMuscle(ModelBuilder modelBuilder)
+
+    private static void ConfigureExample(ModelBuilder modelBuilder)
     {
-        modelBuilder.Entity<ExercisePrimaryMuscle>(entity =>
+        modelBuilder.Entity<Example>(entity =>
         {
-            entity.ToTable("ExercisePrimaryMuscles");
-            entity.HasKey(e => new { e.ExerciseId, e.MuscleId });
+            entity.ToTable("Examples");
 
-            entity.Property(e => e.ExerciseId).HasMaxLength(32).IsRequired();
-            entity.Property(e => e.MuscleId).HasColumnName("MuscleRef").HasMaxLength(100).IsRequired();
-            entity.Property(e => e.SortOrder).IsRequired();
+            entity.HasKey(e => e.Id);
 
-            entity.HasOne<Exercise>()
+            entity.Property(e => e.Id)
+                .IsRequired();
+
+            entity.Property(e => e.Code)
+                .HasMaxLength(100)
+                .IsRequired();
+
+            entity.Property(e => e.Name)
+                .HasMaxLength(200)
+                .IsRequired();
+
+            entity.Property(e => e.Description)
+                .HasMaxLength(1000)
+                .IsRequired();
+
+            entity.HasIndex(e => e.Code)
+                .IsUnique();
+        });
+    }
+
+    private static void ConfigureTrainingLog(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<TrainingLog>(entity =>
+        {
+            entity.ToTable("TrainingLogs");
+
+            entity.HasKey(x => x.Id);
+
+            entity.Property(x => x.GroupId)
+                .IsRequired();
+
+            entity.Property(x => x.RoutineId)
+                .IsRequired();
+
+            entity.Property(x => x.SessionId)
+                .IsRequired();
+
+            entity.Property(x => x.ExerciseId)
+                .IsRequired();
+
+            entity.Property(x => x.MetricId)
+                .IsRequired();
+
+            entity.Property(x => x.Value)
+                .HasPrecision(18, 2)
+                .IsRequired();
+
+            entity.Property(x => x.Timestamp)
+                .IsRequired();
+
+            entity.Property(x => x.UserId)
+                .IsRequired();
+
+            entity.HasOne<DomainUnit>()
                 .WithMany()
-                .HasForeignKey(e => e.ExerciseId)
+                .HasForeignKey(x => x.MetricId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasIndex(x => x.GroupId);
+            entity.HasIndex(x => x.RoutineId);
+            entity.HasIndex(x => x.SessionId);
+            entity.HasIndex(x => x.ExerciseId);
+            entity.HasIndex(x => x.MetricId);
+            entity.HasIndex(x => x.UserId);
+
+            entity.HasIndex(x => new
+            {
+                x.SessionId,
+                x.ExerciseId
+            });
+        });
+    }
+    private static void ConfigureExercice(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<Exercice>(entity =>
+        {
+            entity.ToTable("Exercices");
+
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.Name)
+                .HasMaxLength(200)
+                .IsRequired();
+
+            entity.Property(e => e.Code)
+                .HasMaxLength(50)
+                .IsRequired();
+
+            entity.Property(e => e.Description)
+                .HasMaxLength(1000);
+
+            entity.HasIndex(e => e.Code)
+                .HasFilter("[DeletedAt] IS NULL")
+                .IsUnique();
+        });
+    }
+    private static void ConfigureExerciceMuscle(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<ExerciceMuscle>(entity =>
+        {
+            entity.ToTable("ExerciceMuscles");
+
+            entity.HasKey(e => new
+            {
+                e.ExerciceId,
+                e.MuscleId,
+                e.Type
+            });
+
+            entity.Property(e => e.Type)
+                .HasConversion<string>()
+                .HasMaxLength(20)
+                .IsRequired();
+
+            entity.HasOne(e => e.Exercice)
+                .WithMany(e => e.Muscles)
+                .HasForeignKey(e => e.ExerciceId)
                 .OnDelete(DeleteBehavior.Cascade);
 
-            entity.HasOne<Muscle>()
+            entity.HasOne(e => e.Muscle)
                 .WithMany()
                 .HasForeignKey(e => e.MuscleId)
                 .OnDelete(DeleteBehavior.Restrict);
-
-            entity.HasIndex(e => e.MuscleId);
         });
     }
-
-    private static void ConfigureExerciseSecondaryMuscle(ModelBuilder modelBuilder)
+    private static void ConfigureExerciceUnit(ModelBuilder modelBuilder)
     {
-        modelBuilder.Entity<ExerciseSecondaryMuscle>(entity =>
+        modelBuilder.Entity<ExerciceUnit>(entity =>
         {
-            entity.ToTable("ExerciseSecondaryMuscles");
-            entity.HasKey(e => new { e.ExerciseId, e.MuscleId });
+            entity.ToTable("ExerciceUnits");
 
-            entity.Property(e => e.ExerciseId).HasMaxLength(32).IsRequired();
-            entity.Property(e => e.MuscleId).HasColumnName("MuscleRef").HasMaxLength(100).IsRequired();
-            entity.Property(e => e.SortOrder).IsRequired();
+            entity.HasKey(e => new
+            {
+                e.ExerciceId,
+                e.UnitId
+            });
 
-            entity.HasOne<Exercise>()
-                .WithMany()
-                .HasForeignKey(e => e.ExerciseId)
+            entity.HasOne(e => e.Exercice)
+                .WithMany(e => e.Units)
+                .HasForeignKey(e => e.ExerciceId)
                 .OnDelete(DeleteBehavior.Cascade);
 
-            entity.HasOne<Muscle>()
+            entity.HasOne(e => e.Unit)
                 .WithMany()
-                .HasForeignKey(e => e.MuscleId)
+                .HasForeignKey(e => e.UnitId)
                 .OnDelete(DeleteBehavior.Restrict);
-
-            entity.HasIndex(e => e.MuscleId);
         });
     }
-
-    private static void ConfigureExerciseMeasurementType(ModelBuilder modelBuilder)
+    private static void ConfigureAuditableEntities(ModelBuilder modelBuilder)
     {
-        modelBuilder.Entity<ExerciseMeasurementType>(entity =>
+        foreach (var entityType in modelBuilder.Model.GetEntityTypes())
         {
-            entity.ToTable("ExerciseMeasurementTypes");
-            entity.HasKey(e => new { e.ExerciseId, e.MeasurementTypeId });
+            if (!typeof(AuditableEntity).IsAssignableFrom(entityType.ClrType))
+            {
+                continue;
+            }
 
-            entity.Property(e => e.ExerciseId).HasMaxLength(32).IsRequired();
-            entity.Property(e => e.MeasurementTypeId).HasMaxLength(32).IsRequired();
-            entity.Property(e => e.SortOrder).IsRequired();
+            var entity = modelBuilder.Entity(entityType.ClrType);
 
-            entity.HasOne<Exercise>()
-                .WithMany()
-                .HasForeignKey(e => e.ExerciseId)
-                .OnDelete(DeleteBehavior.Cascade);
+            entity.Property(nameof(AuditableEntity.CreatedAt))
+                .IsRequired();
 
-            entity.HasOne<MeasurementType>()
-                .WithMany()
-                .HasForeignKey(e => e.MeasurementTypeId)
-                .OnDelete(DeleteBehavior.Restrict);
+            entity.Property(nameof(AuditableEntity.CreatedBy));
 
-            entity.HasIndex(e => e.MeasurementTypeId);
-        });
+            entity.Property(nameof(AuditableEntity.UpdatedAt));
+            entity.Property(nameof(AuditableEntity.UpdatedBy));
+
+            entity.Property(nameof(AuditableEntity.DeletedAt));
+            entity.Property(nameof(AuditableEntity.DeletedBy));
+
+            entity.Ignore(nameof(AuditableEntity.IsDeleted));
+
+            entity.HasIndex(nameof(AuditableEntity.DeletedAt));
+        }
+    }
+
+    public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+    {
+        ApplyAuditFields();
+
+        return base.SaveChangesAsync(cancellationToken);
+    }
+
+    private void ApplyAuditFields()
+    {
+        var now = DateTimeOffset.UtcNow;
+
+        foreach (var entry in ChangeTracker.Entries<AuditableEntity>())
+        {
+            if (entry.State == EntityState.Added)
+            {
+                entry.Property(nameof(AuditableEntity.CreatedAt)).CurrentValue = now;
+            }
+
+            if (entry.State == EntityState.Modified)
+            {
+                entry.Property(nameof(AuditableEntity.UpdatedAt)).CurrentValue = now;
+            }
+
+            if (entry.State == EntityState.Deleted)
+            {
+                entry.State = EntityState.Modified;
+                entry.Property(nameof(AuditableEntity.DeletedAt)).CurrentValue = now;
+            }
+        }
     }
 }

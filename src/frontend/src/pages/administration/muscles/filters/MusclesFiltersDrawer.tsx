@@ -1,43 +1,32 @@
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
-import Checkbox from '@mui/material/Checkbox';
 import Drawer from '@mui/material/Drawer';
-import FormControlLabel from '@mui/material/FormControlLabel';
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import { useTranslation } from 'react-i18next';
+import { PopUpCode } from '../../../../enums/popUp/popUp';
+import { fetchAdminMuscles, setMusclesFilters, setMusclesPopUpCode, setMusclesTable } from '../../../../redux/actions/muscles/musclesActions';
+import { useAppDispatch, useAppSelector } from '../../../../redux/hooks';
+import { selectMusclesState } from '../../../../redux/states/adminMuscles/adminMusclesState';
 
-type MusclesFiltersDrawerProps = {
-  open: boolean;
-  searchInput: string;
-  filterCode: string;
-  filterName: string;
-  includeDeleted: boolean;
-  onClose: () => void;
-  onSearchInputChange: (value: string) => void;
-  onFilterCodeChange: (value: string) => void;
-  onFilterNameChange: (value: string) => void;
-  onIncludeDeletedChange: (value: boolean) => void;
-  onApplySearch: () => void;
-  onClearFilters: () => void;
-};
-
-export function MusclesFiltersDrawer({
-  open,
-  searchInput,
-  filterCode,
-  filterName,
-  includeDeleted,
-  onClose,
-  onSearchInputChange,
-  onFilterCodeChange,
-  onFilterNameChange,
-  onIncludeDeletedChange,
-  onApplySearch,
-  onClearFilters,
-}: MusclesFiltersDrawerProps) {
+export function MusclesFiltersDrawer() {
   const { t } = useTranslation();
+  const dispatch = useAppDispatch();
+  const { popUpCode, filters, table } = useAppSelector(selectMusclesState);
+  const open = popUpCode === PopUpCode.Filter;
+
+  const onClose = () => dispatch(setMusclesPopUpCode(PopUpCode.Default));
+  const onApplySearch = () => {
+    dispatch(setMusclesTable({ ...table, page: 0 }));
+    dispatch(setMusclesPopUpCode(PopUpCode.Default));
+    void dispatch(fetchAdminMuscles());
+  };
+  const onClearFilters = () => {
+    dispatch(setMusclesFilters({ code: '', name: '' }));
+    dispatch(setMusclesTable({ ...table, page: 0 }));
+    void dispatch(fetchAdminMuscles());
+  };
 
   return (
     <>
@@ -51,7 +40,7 @@ export function MusclesFiltersDrawer({
           }}
         >
           <Typography variant="h6" fontWeight={800} sx={{ letterSpacing: 0.3, lineHeight: 1.2 }}>
-            {t('administration.common.filters')}
+            {t('common.filters')}
           </Typography>
           <Typography variant="caption" sx={{ opacity: 0.85 }}>
             {t('app.tagline')}
@@ -72,42 +61,28 @@ export function MusclesFiltersDrawer({
                 }}
                 onClick={onClearFilters}
               >
-                {t('administration.common.clearFiltersAction')}
+                {t('common.clearFiltersAction')}
               </Button>
               <Button variant="contained" onClick={onApplySearch}>
-                {t('administration.common.searchAction')}
+                {t('common.search')}
               </Button>
             </Stack>
-            <Stack spacing={1}>
-              <Typography variant="caption" color="text.secondary">
-                {t('administration.muscles.searchHint')}
-              </Typography>
-              <TextField
-                label={t('administration.common.searchLabel')}
-                placeholder={t('administration.common.searchPlaceholder')}
-                value={searchInput}
-                onChange={(event) => onSearchInputChange(event.target.value)}
-                fullWidth
-              />
-            </Stack>
+
             <TextField
               label="Código"
               placeholder="Filtrar por código..."
-              value={filterCode}
-              onChange={(event) => onFilterCodeChange(event.target.value)}
+              value={filters.code ?? ''}
+              onChange={(event) => dispatch(setMusclesFilters({ ...filters, code: event.target.value }))}
               fullWidth
             />
             <TextField
               label="Nombre"
               placeholder="Filtrar por nombre..."
-              value={filterName}
-              onChange={(event) => onFilterNameChange(event.target.value)}
+              value={filters.name ?? ''}
+              onChange={(event) => dispatch(setMusclesFilters({ ...filters, name: event.target.value }))}
               fullWidth
             />
-            <FormControlLabel
-              control={<Checkbox checked={includeDeleted} onChange={(_event, checked) => onIncludeDeletedChange(checked)} />}
-              label={t('administration.common.includeDeleted')}
-            />
+           
           </Stack>
         </Box>
       </Drawer>

@@ -15,29 +15,25 @@ public sealed class MuscleRepository : IMuscleRepository
         _context = context;
     }
 
-    public async Task<Muscle?> GetByIdAsync(string id, CancellationToken cancellationToken = default)
+    public async Task<Muscle?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
         return await _context.Muscles
             .FirstOrDefaultAsync(m => m.Id == id, cancellationToken);
     }
 
-    public async Task<IReadOnlyCollection<Muscle>> ListAsync(bool includeDeleted = false, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyCollection<Muscle>> ListAsync( CancellationToken cancellationToken = default)
     {
         var query = _context.Muscles.AsQueryable();
-
-        if (!includeDeleted)
-        {
-            query = query.Where(m => !m.IsDeleted);
-        }
-
-        return await query.ToArrayAsync(cancellationToken);
+        return (await query.ToListAsync(cancellationToken)).Where(m => m.DeletedAt == null).ToArray();
     }
 
-    public async Task<bool> ExistsActiveCodeAsync(string code, string? excludingId = null, CancellationToken cancellationToken = default)
+    public async Task<bool> ExistsActiveCodeAsync(string code, Guid? excludingId = null, CancellationToken cancellationToken = default)
     {
+        var normalizedCode = code.Trim().ToUpperInvariant();
+
         return await _context.Muscles
-            .AnyAsync(m => !m.IsDeleted && m.Active
-                && m.Code == code
+            .AnyAsync(m => m.DeletedAt == null
+                && m.Code == normalizedCode
                 && (excludingId == null || m.Id != excludingId),
                 cancellationToken);
     }
@@ -58,7 +54,7 @@ public sealed class MuscleRepository : IMuscleRepository
         await _context.SaveChangesAsync(cancellationToken);
     }
 
-    public async Task<bool> DeleteAsync(string id, DateTimeOffset now, CancellationToken cancellationToken = default)
+    public async Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default)
     {
         var entity = await GetByIdAsync(id, cancellationToken);
         if (entity is null)
@@ -66,20 +62,20 @@ public sealed class MuscleRepository : IMuscleRepository
             return false;
         }
 
-        entity.SoftDelete(now);
+        entity.Delete(id);
         await _context.SaveChangesAsync(cancellationToken);
         return true;
     }
 
-    public async Task<bool> ReactivateAsync(string id, CancellationToken cancellationToken = default)
+    public async Task<bool> ReactivateAsync(Guid id, CancellationToken cancellationToken = default)
     {
         var entity = await GetByIdAsync(id, cancellationToken);
-        if (entity is null)
+        if (entity is null || !entity.IsDeleted)
         {
             return false;
         }
 
-        entity.Reactivate();
+        entity.Restore();
         await _context.SaveChangesAsync(cancellationToken);
         return true;
     }

@@ -1,6 +1,7 @@
 using FluentAssertions;
 
 using GymTracker.Application.Admin.MeasurementTypes;
+using GymTracker.Domain.Entities;
 
 namespace GymTracker.Application.UnitTests.Admin.MeasurementTypes;
 
@@ -28,78 +29,56 @@ public sealed class MeasurementTypeCsvImportTests
 
     private sealed class InMemoryMeasurementTypeRepository : IMeasurementTypeRepository
     {
-        private readonly Dictionary<string, MeasurementTypeResponse> _store = new(StringComparer.OrdinalIgnoreCase);
+        private readonly Dictionary<string, MeasurementType> _store = new(StringComparer.OrdinalIgnoreCase);
 
-        public Task<MeasurementTypesPageResponse> ListPageAsync(
-            bool includeInactive = false,
-            string? search = null,
-            string? code = null,
-            string sortBy = "code",
-            string sortDirection = "asc",
-            int page = 1,
-            int pageSize = 10,
-            CancellationToken cancellationToken = default)
+        public Task<MeasurementType?> GetByIdAsync(string id, CancellationToken cancellationToken = default)
+            => Task.FromResult(_store.GetValueOrDefault(id));
+
+        public Task<IReadOnlyCollection<MeasurementType>> ListAsync(bool includeDeleted = false, CancellationToken cancellationToken = default)
         {
-            var rows = includeInactive
+            var rows = includeDeleted
                 ? _store.Values.ToArray()
                 : _store.Values.Where(item => !item.IsDeleted).ToArray();
 
-            return Task.FromResult(new MeasurementTypesPageResponse(
-                rows,
-                rows.Length,
-                page,
-                pageSize));
+            return Task.FromResult<IReadOnlyCollection<MeasurementType>>(rows);
         }
 
-        public Task<IReadOnlyCollection<AssignableMeasurementTypeResponse>> ListAssignableAsync(CancellationToken cancellationToken = default)
+        public Task<bool> ExistsActiveCodeAsync(string code, string? excludeId = null, CancellationToken cancellationToken = default)
         {
-            var rows = _store.Values
-                .Where(item => !item.IsDeleted)
-                .Select(item => new AssignableMeasurementTypeResponse(item.Id, item.Code, item.Name, item.Description))
-                .ToArray();
-            return Task.FromResult<IReadOnlyCollection<AssignableMeasurementTypeResponse>>(rows);
+            var exists = _store.Values.Any(item =>
+                !item.IsDeleted
+                && string.Equals(item.Code, code, StringComparison.OrdinalIgnoreCase)
+                && !string.Equals(item.Id, excludeId, StringComparison.OrdinalIgnoreCase));
+
+            return Task.FromResult(exists);
         }
 
-        public Task<MeasurementTypeResponse?> GetByIdAsync(string id, CancellationToken cancellationToken = default)
+        public Task SaveAsync(MeasurementType entity, CancellationToken cancellationToken = default)
         {
-            _store.TryGetValue(id, out var row);
-            return Task.FromResult<MeasurementTypeResponse?>(row);
+            _store[entity.Id] = entity;
+            return Task.CompletedTask;
         }
 
-        public Task<MeasurementTypeResponse> CreateAsync(UpsertMeasurementTypeRequest request, CancellationToken cancellationToken = default)
+        public Task<bool> DeleteAsync(string id, DateTimeOffset now, CancellationToken cancellationToken = default)
         {
-            var code = (request.Code ?? string.Empty).Trim().ToUpperInvariant().Replace(' ', '_');
-            if (string.IsNullOrWhiteSpace(code))
+            if (!_store.TryGetValue(id, out var entity))
             {
-                throw new ArgumentException("Code is required.", nameof(request.Code));
+                return Task.FromResult(false);
             }
 
-            var hasConflict = _store.Values.Any(item => !item.IsDeleted && string.Equals(item.Code, code, StringComparison.OrdinalIgnoreCase));
-            if (hasConflict)
-            {
-                throw new InvalidOperationException("Code already exists among active records.");
-            }
-
-            var name = string.IsNullOrWhiteSpace(request.Name) ? code : request.Name.Trim();
-
-            var row = new MeasurementTypeResponse(
-                Id: Guid.NewGuid().ToString("N"),
-                Code: code,
-                Name: name,
-                Description: request.Description,
-                IsDeleted: false);
-
-            _store[row.Id] = row;
-            return Task.FromResult(row);
+            entity.SoftDelete(now);
+            return Task.FromResult(true);
         }
 
-        public Task<MeasurementTypeResponse?> UpdateAsync(string id, UpsertMeasurementTypeRequest request, CancellationToken cancellationToken = default)
-            => Task.FromResult<MeasurementTypeResponse?>(null);
+        public Task<bool> ReactivateAsync(string id, CancellationToken cancellationToken = default)
+        {
+            if (!_store.TryGetValue(id, out var entity))
+            {
+                return Task.FromResult(false);
+            }
 
-        public Task<bool> DeleteAsync(string id, CancellationToken cancellationToken = default)
-            => Task.FromResult(false);
-
-        public Task<MeasurementTypeResponse?> ReactivateAsync(string id, CancellationToken cancellationToken = default)
-            => Task.FromResult<MeasurementTypeResponse?>(null);
+            entity.Reactivate();
+            return Task.FromResult(true);
+        }
     }
 }

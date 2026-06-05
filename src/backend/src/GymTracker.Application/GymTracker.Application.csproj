@@ -5,6 +5,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Scrutor" Version="5.0.1" />
     <ProjectReference Include="..\GymTracker.Domain\GymTracker.Domain.csproj" />
   </ItemGroup>
 

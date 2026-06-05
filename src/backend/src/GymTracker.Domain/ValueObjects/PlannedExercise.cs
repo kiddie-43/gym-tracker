@@ -6,7 +6,6 @@ public sealed class PlannedExercise
 
     public string ExerciseName { get; init; } = string.Empty;
 
-    public IReadOnlyCollection<string> MuscleGroupIds { get; init; } = Array.Empty<string>();
 
     public int TargetSets { get; init; }
 

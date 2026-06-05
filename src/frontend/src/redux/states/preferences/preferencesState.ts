@@ -4,6 +4,7 @@ import type { RootState } from '../../store';
 export type PreferencesState = {
   themeMode: 'light' | 'dark';
   profile: UserProfile;
+  headerTitle: string;
 };
 
 function getInitialThemeMode(): 'light' | 'dark' {
@@ -14,6 +15,7 @@ function getInitialThemeMode(): 'light' | 'dark' {
 export const preferencesInitialState: PreferencesState = {
   themeMode: getInitialThemeMode(),
   profile: { firstName: '', lastName: '', email: '', photoUrl: '' },
+  headerTitle: '',
 };
 
 export const selectPreferencesState = (state: RootState) => state.preferences;

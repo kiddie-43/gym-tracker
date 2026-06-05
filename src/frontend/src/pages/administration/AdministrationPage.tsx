@@ -6,9 +6,9 @@ import Tab from '@mui/material/Tab';
 import Tabs from '@mui/material/Tabs';
 import { useTranslation } from 'react-i18next';
 
-import { ExercisesPanel } from './exercises/ExercisesPanel';
-import { MeasurementTypesPanel } from './measurement-types/MeasurementTypesPanel';
+import {  UnitsPanel} from './units/UnitsPanel';
 import { MusclesPanel } from './muscles/MusclesPanel';
+import { ExercisesPanel } from './exercises/ExercisesPanel';
 
 const TABS = [
   { key: 'administration.tabs.muscles' },
@@ -46,7 +46,7 @@ export function AdministrationPage() {
 
       <Box sx={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
         {activeTab === 0 ? <MusclesPanel supportsImport={true} /> : null}
-        {activeTab === 1 ? <MeasurementTypesPanel  supportsImport={true} /> : null}
+        {activeTab === 1 ? <UnitsPanel  supportsImport={true} /> : null}
         {activeTab === 2 ? <ExercisesPanel supportsImport={true} /> : null}
       </Box>
     </Container>

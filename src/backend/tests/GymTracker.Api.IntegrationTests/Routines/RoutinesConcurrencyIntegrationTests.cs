@@ -22,17 +22,17 @@ public sealed class RoutinesConcurrencyIntegrationTests : IClassFixture<WebAppli
     [Fact]
     public async Task UpdateRoutine_ShouldFollowLastWriteWinsPolicy()
     {
-        var createResponse = await _client.PostAsJsonAsync("/api/routines", new CreateRoutineDto("Base", "Goal"));
+        var createResponse = await _client.PostAsJsonAsync("/api/routines", new CreateRoutineDto { Name = "Base", Goal = "Goal" });
         var created = await createResponse.Content.ReadFromJsonAsync<RoutineDetailDto>();
 
-        var firstWrite = await _client.PatchAsJsonAsync($"/api/routines/{created!.Id}", new UpdateRoutineDto("Version A", "Goal A"));
+        var firstWrite = await _client.PatchAsJsonAsync($"/api/routines/{created!.Id}", new UpdateRoutineDto { Name = "Version A", Goal = "Goal A" });
         firstWrite.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        var secondWrite = await _client.PatchAsJsonAsync($"/api/routines/{created.Id}", new UpdateRoutineDto("Version B", "Goal B"));
+        var secondWrite = await _client.PatchAsJsonAsync($"/api/routines/{created.Id}", new UpdateRoutineDto { Name = "Version B", Goal = "Goal B" });
         secondWrite.StatusCode.Should().Be(HttpStatusCode.OK);
 
         var current = await _client.GetFromJsonAsync<RoutineDetailDto>($"/api/routines/{created.Id}");
-        current!.Title.Should().Be("Version B");
+        current!.Description.Should().Be("Version B");
         current.Goal.Should().Be("Goal B");
     }
 }

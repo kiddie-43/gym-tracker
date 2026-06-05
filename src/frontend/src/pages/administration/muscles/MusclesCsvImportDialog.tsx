@@ -12,17 +12,11 @@ import TableRow from '@mui/material/TableRow';
 import Typography from '@mui/material/Typography';
 import { useTranslation } from 'react-i18next';
 
-import type { IImportMusclesResult } from '../../../interfaces/muscles/IMuscles';
+import { PopUpCode } from '../../../enums/popUp/popUp';
 import { PopupDialog } from '../../../components/PopupDialog/PopupDialog';
-
-export interface MusclesCsvImportDialogProps {
-  open: boolean;
-  loading: boolean;
-  result: IImportMusclesResult | null;
-  error: string | null;
-  onClose: () => void;
-  onImport: (rows: Array<{ name?: string; code?: string; description?: string }>) => Promise<void>;
-}
+import { fetchAdminMuscles, importMuscleCsv, setMusclesPopUpCode } from '../../../redux/actions/muscles/musclesActions';
+import { useAppDispatch, useAppSelector } from '../../../redux/hooks';
+import { selectMusclesState } from '../../../redux/states/adminMuscles/adminMusclesState';
 
 function parseCsvRows(raw: string): Array<{ name?: string; code?: string; description?: string }> {
   const lines = raw
@@ -53,15 +47,12 @@ function parseCsvRows(raw: string): Array<{ name?: string; code?: string; descri
   });
 }
 
-export function MusclesCsvImportDialog({
-  open,
-  loading,
-  result,
-  error,
-  onClose,
-  onImport,
-}: MusclesCsvImportDialogProps) {
+export function MusclesCsvImportDialog() {
   const { t } = useTranslation();
+  const dispatch = useAppDispatch();
+  const { popUpCode, loading, error, csvResult } = useAppSelector(selectMusclesState);
+  const open = popUpCode === PopUpCode.CsvImport;
+  const result = csvResult;
   const [csvText, setCsvText] = useState('');
   const [selectedFileName, setSelectedFileName] = useState<string | null>(null);
   const [fileReadError, setFileReadError] = useState<string | null>(null);
@@ -88,7 +79,25 @@ export function MusclesCsvImportDialog({
   };
 
   const handleImport = async () => {
-    await onImport(previewRows);
+    const escapeCsv = (value: string) => `"${value.replace(/"/g, '""')}"`;
+    const csvRaw = [
+      'code,name,description',
+      ...previewRows.map((row) => [
+        escapeCsv(row.code ?? ''),
+        escapeCsv(row.name ?? ''),
+        escapeCsv(row.description ?? ''),
+      ].join(',')),
+    ].join('\n');
+
+    const thunkResult = await dispatch(importMuscleCsv(csvRaw));
+    if (importMuscleCsv.fulfilled.match(thunkResult)) {
+      void dispatch(fetchAdminMuscles());
+    }
+  };
+
+  const onClose = () => {
+    if (loading) return;
+    dispatch(setMusclesPopUpCode(PopUpCode.Default));
   };
 
   return (

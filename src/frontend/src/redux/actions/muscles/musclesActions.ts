@@ -1,18 +1,29 @@
-import { createAsyncThunk } from '@reduxjs/toolkit';
+import { createAction, createAsyncThunk } from '@reduxjs/toolkit';
 
-import type { MuscleDto, MusclesPageDto, UpsertMuscleRequest } from '../../../interfaces/admin/muscles/muscles';
+import type { IMuscle, IMusclesFilter } from '../../../interfaces/muscles/IMuscles';
 import {
   createMuscle as createMuscleApi,
   deleteMuscle as deleteMuscleApi,
+  getMuscleById as getMuscleByIdApi,
+  importMusclesCsv as importMuscleCsvApi,
   listMusclesPage,
+  reactivateMuscle as reactivateMuscleApi,
   updateMuscle,
-} from '../../../services/api/admin/muscles/musclesApi';
-import {
-  setAdminMusclesError,
-  setAdminMusclesList,
-  setAdminMusclesLoading,
-} from '../adminMuscles/adminMusclesActions';
+} from '../../../services/api/muscles/musclesApi';
 import type { RootState } from '../../store';
+import { PopUpCode } from '../../../enums/popUp/popUp';
+import { IPaginated } from '../../../interfaces/skeleton/IPaginated/IPaginated';
+
+
+export const setMusclesTable = createAction<IPaginated<IMuscle>>('muscles/setTable');
+export const setMusclesFilters = createAction<IMusclesFilter>('muscles/setFilters');
+export const setMusclesForm = createAction<IMuscle>('muscles/setForm');
+export const setMusclesCsvResult = createAction<unknown | null>('muscles/setCsvResult');
+export const setMusclesLoading = createAction<boolean>('muscles/setLoading');
+export const setMusclesError = createAction<string | null>('muscles/setError');
+export const setMusclesPopUpCode = createAction<PopUpCode>('muscles/setPopUpCode');
+export const resetMuscles = createAction('muscles/reset');
+
 
 type AdminMusclesThunkConfig = {
   state: RootState;
@@ -25,85 +36,100 @@ function toErrorMessage(error: unknown, fallback: string): string {
     : fallback;
 }
 
-// Get muscles paginated
-export const getMusclesPaginated = createAsyncThunk<MusclesPageDto, { page: number; limit: number }, AdminMusclesThunkConfig>(
-  'muscles/getPaginated',
-  async ({ page, limit }, { dispatch, rejectWithValue }) => {
+// Fetch paginated list — reads filters + pagination from Redux state
+export const fetchAdminMuscles = createAsyncThunk<IPaginated<IMuscle>, void, AdminMusclesThunkConfig>(
+  'muscles/fetch',
+  async (_arg, { getState, rejectWithValue }) => {
+    const { filters, table } = getState().adminMuscles;
     try {
-      dispatch(setAdminMusclesLoading(true));
-      const result = await listMusclesPage({ page, pageSize: limit });
-      dispatch(setAdminMusclesList(result.items));
-      return result;
+
+      const query: IMusclesFilter = {
+        code: filters.code || undefined,
+        name: filters.name || undefined,
+        sortBy: table.sortBy,
+        sortDirection: table.sortDirection,
+        page: table.page,
+        pageSize: table.pageSize,
+      }
+      return await listMusclesPage(query);
     } catch (error) {
-      dispatch(setAdminMusclesError(toErrorMessage(error, 'No se pudo cargar el listado.')));
       return rejectWithValue(toErrorMessage(error, 'No se pudo cargar el listado.'));
-    } finally {
-      dispatch(setAdminMusclesLoading(false));
     }
   },
 );
 
-// Get muscle by ID (resolves from current list in state)
-export const getMuscleById = createAsyncThunk<MuscleDto | null, string, AdminMusclesThunkConfig>(
-  'muscles/getById',
-  async (id, { getState }) => {
-    const list = getState().adminMuscles.list;
-    return list.find((m) => m.id === id) ?? null;
-  },
-);
-
-// Create muscle
-export const createMuscle = createAsyncThunk<MuscleDto, UpsertMuscleRequest, AdminMusclesThunkConfig>(
-  'muscles/create',
-  async (data, { dispatch, getState, rejectWithValue }) => {
+// Submit form (create or edit) — reads form from Redux state
+export const submitAdminMuscleForm = createAsyncThunk<void, void, AdminMusclesThunkConfig>(
+  'muscles/submitForm',
+  async (_arg, { getState, rejectWithValue }) => {
+    const { form } = getState().adminMuscles;
+    const request: IMuscle = {
+      name: form.name.trim(),
+      code: form.code.trim(),
+      description: form.description?.trim() || null,
+    };
     try {
-      dispatch(setAdminMusclesLoading(true));
-      const created = await createMuscleApi(data);
-      dispatch(setAdminMusclesList([...getState().adminMuscles.list, created]));
-      return created;
+      if (form.id) {
+        await updateMuscle(form.id, request);
+      } else {
+        await createMuscleApi(request);
+      }
     } catch (error) {
-      dispatch(setAdminMusclesError(toErrorMessage(error, 'No se pudo crear el músculo.')));
-      return rejectWithValue(toErrorMessage(error, 'No se pudo crear el músculo.'));
-    } finally {
-      dispatch(setAdminMusclesLoading(false));
+      return rejectWithValue(toErrorMessage(error, 'No se pudo guardar el músculo.'));
     }
   },
 );
 
-// Edit muscle
-export const editMuscle = createAsyncThunk<MuscleDto, { id: string; data: UpsertMuscleRequest }, AdminMusclesThunkConfig>(
-  'muscles/edit',
-  async ({ id, data }, { dispatch, getState, rejectWithValue }) => {
+// Delete multiple muscles by ID
+export const deleteAdminMuscles = createAsyncThunk<{ failedCount: number; total: number }, string[], AdminMusclesThunkConfig>(
+  'muscles/deleteMany',
+  async (ids, { rejectWithValue }) => {
     try {
-      dispatch(setAdminMusclesLoading(true));
-      const updated = await updateMuscle(id, data);
-      const newList = getState().adminMuscles.list.map((m) => (m.id === id ? updated : m));
-      dispatch(setAdminMusclesList(newList));
-      return updated;
+      const results = await Promise.allSettled(ids.map((id) => deleteMuscleApi(id)));
+      const failedCount = results.filter((r) => r.status === 'rejected').length;
+      return { failedCount, total: ids.length };
     } catch (error) {
-      dispatch(setAdminMusclesError(toErrorMessage(error, 'No se pudo actualizar el músculo.')));
-      return rejectWithValue(toErrorMessage(error, 'No se pudo actualizar el músculo.'));
-    } finally {
-      dispatch(setAdminMusclesLoading(false));
-    }
-  },
-);
-
-// Delete muscle
-export const deleteMuscle = createAsyncThunk<string, string, AdminMusclesThunkConfig>(
-  'muscles/delete',
-  async (id, { dispatch, getState, rejectWithValue }) => {
-    try {
-      dispatch(setAdminMusclesLoading(true));
-      await deleteMuscleApi(id);
-      const newList = getState().adminMuscles.list.filter((m) => m.id !== id);
-      dispatch(setAdminMusclesList(newList));
-      return id;
-    } catch (error) {
-      dispatch(setAdminMusclesError(toErrorMessage(error, 'No se pudo eliminar el músculo.')));
       return rejectWithValue(toErrorMessage(error, 'No se pudo eliminar el músculo.'));
-    } finally {
-      dispatch(setAdminMusclesLoading(false));
     }
   },
 );
+
+// Reactivate a single muscle
+export const reactivateAdminMuscle = createAsyncThunk<IMuscle, string, AdminMusclesThunkConfig>(
+  'muscles/reactivate',
+  async (id, { rejectWithValue }) => {
+    try {
+      return await reactivateMuscleApi(id);
+    } catch (error) {
+      return rejectWithValue(toErrorMessage(error, 'No se pudo reactivar el músculo.'));
+    }
+  },
+);
+
+export const importMuscleCsv = createAsyncThunk<
+  IMuscle,
+  string,
+  AdminMusclesThunkConfig
+>(
+  'muscles/importCsv',
+  async (request, { rejectWithValue }) => {
+    try {
+      return await importMuscleCsvApi(request);
+    } catch (error) {
+      return rejectWithValue(toErrorMessage(error, 'No se pudo importar el CSV.'));
+    }
+  },
+);
+
+// Get muscle by ID
+export const getMuscleById = createAsyncThunk<IMuscle | null, string, AdminMusclesThunkConfig>(
+  'muscles/getById',
+  async (id, { rejectWithValue }) => {
+    try {
+      return await getMuscleByIdApi(id);
+    } catch (error) {
+      return rejectWithValue(toErrorMessage(error, 'No se pudo obtener el músculo.'));
+    }
+  },
+);
+

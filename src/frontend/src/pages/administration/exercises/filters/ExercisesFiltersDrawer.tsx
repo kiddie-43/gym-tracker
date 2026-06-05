@@ -3,59 +3,80 @@ import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Checkbox from '@mui/material/Checkbox';
 import Drawer from '@mui/material/Drawer';
-import FormControlLabel from '@mui/material/FormControlLabel';
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import type { IMeasurementType } from '../../../../interfaces/admin/measurementTypes/measurementTypes';
+import type { IUnit } from '../../../../interfaces/units/IUnit';
+import type { IExercisesFilter } from '../../../../interfaces/IExercises/IExercises';
 import type { IMuscle } from '../../../../interfaces/muscles/IMuscles';
+import { updateExerciseFilterAction } from '../../../../redux/actions/exercises/exercisesActions';
+import { useAppDispatch, useAppSelector } from '../../../../redux/hooks';
+import {listUnitsPage } from '../../../../services/api/units/unitsApi';
+import { listMusclesPage } from '../../../../services/api/muscles/musclesApi';
 
 type ExercisesFiltersDrawerProps = {
   open: boolean;
-  searchInput: string;
-  includeDeleted: boolean;
-  selectedDifficulties: string[];
-  selectedMeasurementTypeIds: string[];
-  selectedPrimaryMuscleIds: string[];
-  selectedSecondaryMuscleIds: string[];
-  difficultyOptions: string[];
-  measurementTypeOptions: IMeasurementType[];
-  muscleOptions: IMuscle[];
   onClose: () => void;
-  onSearchInputChange: (value: string) => void;
-  onIncludeDeletedChange: (value: boolean) => void;
-  onSelectedDifficultiesChange: (value: string[]) => void;
-  onSelectedMeasurementTypeIdsChange: (value: string[]) => void;
-  onSelectedPrimaryMuscleIdsChange: (value: string[]) => void;
-  onSelectedSecondaryMuscleIdsChange: (value: string[]) => void;
   onApplySearch: () => void;
   onClearFilters: () => void;
 };
 
 export function ExercisesFiltersDrawer({
   open,
-  searchInput,
-  includeDeleted,
-  selectedDifficulties,
-  selectedMeasurementTypeIds,
-  selectedPrimaryMuscleIds,
-  selectedSecondaryMuscleIds,
-  difficultyOptions,
-  measurementTypeOptions,
-  muscleOptions,
   onClose,
-  onSearchInputChange,
-  onIncludeDeletedChange,
-  onSelectedDifficultiesChange,
-  onSelectedMeasurementTypeIdsChange,
-  onSelectedPrimaryMuscleIdsChange,
-  onSelectedSecondaryMuscleIdsChange,
   onApplySearch,
   onClearFilters,
 }: ExercisesFiltersDrawerProps) {
   const { t } = useTranslation();
+  const dispatch = useAppDispatch();
+  const { filters } = useAppSelector((state) => state.exercises);
+  const [measurementTypeOptions, setMeasurementTypeOptions] = useState<IUnit[]>([]);
+  const [muscleOptions, setMuscleOptions] = useState<IMuscle[]>([]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadReferences = async () => {
+      try {
+        const [musclesPage, unitsPage] = await Promise.all([
+          listMusclesPage({ page: 0, pageSize: 999 }),
+          listUnitsPage({
+            page: 0, pageSize: 999,
+            code: '',
+            name: '',
+            description: ''
+          }),
+        ]);
+
+        if (!isMounted) {
+          return;
+        }
+
+        setMuscleOptions((musclesPage.items ?? []));
+        setMeasurementTypeOptions((unitsPage.items ?? []));
+      } catch {
+        if (!isMounted) {
+          return;
+        }
+
+        setMuscleOptions([]);
+        setMeasurementTypeOptions([]);
+      }
+    };
+
+    void loadReferences();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const onEditFilter = (key: keyof IExercisesFilter, value: unknown) => {
+    dispatch(updateExerciseFilterAction({ key, value }));
+  };
 
   return (
     <Drawer anchor="right" open={open} onClose={onClose}>
@@ -68,7 +89,7 @@ export function ExercisesFiltersDrawer({
           }}
         >
           <Typography variant="h6" fontWeight={800} sx={{ letterSpacing: 0.3, lineHeight: 1.2 }}>
-            {t('administration.common.filters')}
+            {t('common.filters')}
           </Typography>
           <Typography variant="caption" sx={{ opacity: 0.85 }}>
             {t('app.tagline')}
@@ -77,39 +98,22 @@ export function ExercisesFiltersDrawer({
         <Stack spacing={2} sx={{ width: { xs: 280, sm: 340 }, p: 2 }}>
           <Stack direction="row" spacing={1}>
             <Button variant="outlined" onClick={onClearFilters}>
-              {t('administration.common.clearFiltersAction')}
+              {t('common.clearFiltersAction')}
             </Button>
             <Button variant="contained" onClick={onApplySearch}>
-              {t('administration.common.searchAction')}
+              {t('common.search')}
             </Button>
           </Stack>
-          <TextField
-            label={t('administration.common.searchLabel')}
-            placeholder={t('administration.common.searchPlaceholder')}
-            value={searchInput}
-            onChange={(event) => onSearchInputChange(event.target.value)}
-            fullWidth
-          />
-          <Autocomplete
-            multiple
-            options={difficultyOptions}
-            value={selectedDifficulties}
-            onChange={(_event, value) => onSelectedDifficultiesChange(value)}
-            renderInput={(params) => (
-              <TextField
-                {...params}
-                label={t('administration.exercises.fields.difficulty')}
-                placeholder={t('administration.exercises.fields.difficulty')}
-              />
-            )}
-          />
+        
+        
           <Autocomplete
             multiple
             options={measurementTypeOptions}
-            value={measurementTypeOptions.filter((item) => item.id !== undefined && selectedMeasurementTypeIds.includes(item.id))}
+            disableCloseOnSelect
+            value={measurementTypeOptions.filter((item) => item.id !== undefined && (filters.unitId ?? []).includes(item.id ))}
             getOptionLabel={(option) => `${option.name} (${option.code ?? ''})`}
             isOptionEqualToValue={(option, value) => option.id === value.id}
-            onChange={(_event, value) => onSelectedMeasurementTypeIdsChange(value.map((item) => item.id!))}
+            onChange={(_event, value) => onEditFilter('unitId', value.map((item) => item.id!))}
             renderInput={(params) => (
               <TextField
                 {...params}
@@ -117,14 +121,21 @@ export function ExercisesFiltersDrawer({
                 placeholder={t('administration.exercises.fields.measurementType')}
               />
             )}
+            renderOption={(props, option, { selected }) => (
+              <li {...props} key={option.id}>
+                <Checkbox checked={selected} />
+                {`${option.name} (${option.code ?? ''})`}
+              </li>
+            )}
           />
           <Autocomplete
             multiple
             options={muscleOptions}
-            value={muscleOptions.filter((item) => item.id !== undefined && selectedPrimaryMuscleIds.includes(item.id))}
+            disableCloseOnSelect
+            value={muscleOptions.filter((item) => item.id !== undefined && (filters.primaryMuscleId ?? []).includes(item.id))}
             getOptionLabel={(option) => `${option.name} (${option.code ?? ''})`}
             isOptionEqualToValue={(option, value) => option.id === value.id}
-            onChange={(_event, value) => onSelectedPrimaryMuscleIdsChange(value.map((item) => item.id!))}
+            onChange={(_event, value) => onEditFilter('primaryMuscleId', value.map((item) => item.id!))}
             renderInput={(params) => (
               <TextField
                 {...params}
@@ -132,14 +143,21 @@ export function ExercisesFiltersDrawer({
                 placeholder={t('administration.exercises.fields.primaryMuscle')}
               />
             )}
+            renderOption={(props, option, { selected }) => (
+              <li {...props} key={option.id}>
+                <Checkbox checked={selected} />
+                {`${option.name} (${option.code ?? ''})`}
+              </li>
+            )}
           />
           <Autocomplete
             multiple
             options={muscleOptions}
-            value={muscleOptions.filter((item) => item.id !== undefined && selectedSecondaryMuscleIds.includes(item.id))}
+            disableCloseOnSelect
+            value={muscleOptions.filter((item) => item.id !== undefined && (filters.secondaryMuscleId ?? []).includes(item.id))}
             getOptionLabel={(option) => `${option.name} (${option.code ?? ''})`}
             isOptionEqualToValue={(option, value) => option.id === value.id}
-            onChange={(_event, value) => onSelectedSecondaryMuscleIdsChange(value.map((item) => item.id!))}
+            onChange={(_event, value) => onEditFilter('secondaryMuscleId', value.map((item) => item.id!))}
             renderInput={(params) => (
               <TextField
                 {...params}
@@ -147,11 +165,14 @@ export function ExercisesFiltersDrawer({
                 placeholder={t('administration.exercises.fields.secondaryMuscle')}
               />
             )}
+            renderOption={(props, option, { selected }) => (
+              <li {...props} key={option.id}>
+                <Checkbox checked={selected} />
+                {`${option.name} (${option.code ?? ''})`}
+              </li>
+            )}
           />
-          <FormControlLabel
-            control={<Checkbox checked={includeDeleted} onChange={(_event, checked) => onIncludeDeletedChange(checked)} />}
-            label={t('administration.common.includeDeleted')}
-          />
+         
         </Stack>
       </Drawer>
   );

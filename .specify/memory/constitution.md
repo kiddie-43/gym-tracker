@@ -1,11 +1,11 @@
 <!--
 Sync Impact Report
-- Version change: template -> 1.0.0
+- Version change: 2.0.0 -> 2.1.0
 - Modified principles:
 	- Principle slot 1 -> I. API-First y Contrato OpenAPI
-	- Principle slot 2 -> II. Seguridad y Control de Acceso con Firebase Auth
+	- Principle slot 2 -> II. Seguridad y Control de Acceso
 	- Principle slot 3 -> III. Calidad Verificable en Backend y Frontend
-	- Principle slot 4 -> IV. Integridad de Datos y Fronteras Wger/Firebase
+	- Principle slot 4 -> IV. Integridad de Datos y Fronteras Wger/SQL
 	- Principle slot 5 -> V. Progreso Medible, Observabilidad y Operacion
 - Added sections:
 	- Restricciones Tecnologicas Obligatorias
@@ -33,11 +33,17 @@ versionarse y MUST incluir plan de migracion para consumidores.
 
 Rationale: el contrato es la fuente de verdad entre backend, frontend y pruebas.
 
-### II. Seguridad y Control de Acceso con Firebase Auth
-Los endpoints protegidos MUST validar tokens de Firebase Auth y MUST aplicar
+### II. Seguridad y Control de Acceso
+Los endpoints protegidos MUST validar tokens del proveedor de identidad configurado y MUST aplicar
 autorizacion por usuario y/o rol cuando corresponda. Secretos, claves y tokens MUST NOT
 almacenarse en codigo, logs o repositorio. Toda configuracion sensible MUST gestionarse
 por variables de entorno o gestor de secretos.
+
+Mientras no exista proveedor de identidad configurado, el proyecto MAY habilitar un modo
+de autenticacion de desarrollo temporal con identidad simulada, pero solo en entorno
+`Development`. Este modo MUST estar deshabilitado en `Staging` y `Production`, MUST
+registrar explicitamente su uso en logs de inicio, y MUST definir un identificador de
+usuario de prueba deterministico para garantizar trazabilidad en pruebas locales.
 
 Rationale: protege datos personales y evita exposicion accidental de credenciales.
 
@@ -50,9 +56,9 @@ y vacio.
 
 Rationale: reduce deuda tecnica y asegura una experiencia predecible para el usuario.
 
-### IV. Integridad de Datos y Fronteras Wger/Firebase
+### IV. Integridad de Datos y Fronteras Wger/SQL
 La API de Wger MUST usarse para catalogo de ejercicios, alimentos y metadatos de
-referencia. Firebase MUST almacenar todo historial y estado transaccional del usuario
+referencia. SQL MUST almacenar todo historial y estado transaccional del usuario
 (entrenamientos, comidas, comparativas y metas). El sistema MUST mantener trazabilidad al
 identificador externo de Wger cuando aplique. La aplicacion MUST implementar cache de
 catalogo, politica de expiracion y modo degradado cuando Wger no este disponible.
@@ -73,8 +79,11 @@ Rationale: el producto existe para mostrar progreso real, no solo para registrar
 - Backend MUST implementarse en C# con .NET (API REST).
 - OpenAPI/Swagger MUST ser el contrato oficial para documentar y probar endpoints.
 - Frontend MUST implementarse en React + TypeScript + Material UI.
-- Autenticacion e identidad MUST gestionarse con Firebase Auth.
-- Persistencia principal MUST gestionarse en Firebase para registros del usuario.
+- Autenticacion e identidad MUST gestionarse mediante proveedor de identidad configurable,
+	con validacion obligatoria en backend.
+- Si el proveedor de identidad no esta disponible, se MAY usar autenticacion simulada solo
+	en `Development`; MUST NOT habilitarse en `Staging` ni `Production`.
+- Persistencia principal MUST gestionarse en SQL para registros del usuario.
 - Integracion con Wger MUST cubrir catalogos de ejercicios y alimentos.
 - La app MUST NOT depender de Wger para persistir historial personal.
 - Listados grandes MUST usar paginacion y endpoints criticos MUST definir objetivo de
@@ -106,7 +115,9 @@ documentar la excepcion y su justificacion por escrito.
 Definition of Done (obligatoria para cada feature):
 
 - Contrato OpenAPI actualizado y consistente con el comportamiento real.
-- Seguridad revisada (authn/authz) y reglas de Firebase validadas.
+- Seguridad revisada (authn/authz) y politicas de acceso a datos SQL validadas.
+- Si se uso autenticacion simulada en desarrollo, su alcance local y su bloqueo en
+	`Staging`/`Production` quedaron verificados.
 - Pruebas requeridas en verde:
 	- Backend: unitarias para logica de negocio e integracion para endpoints criticos.
 	- Frontend: componentes y flujos principales.
@@ -122,11 +133,12 @@ Definition of Done (obligatoria para cada feature):
 Checklist de PR de cumplimiento constitucional:
 
 - [ ] Contrato OpenAPI actualizado.
-- [ ] Autenticacion y autorizacion verificadas.
+- [ ] Autenticacion y autorizacion verificadas (proveedor real o modo development permitido).
 - [ ] Secretos protegidos y configuracion por entorno aplicada.
+- [ ] Modo de autenticacion simulada deshabilitado fuera de `Development`.
 - [ ] Pruebas requeridas agregadas/actualizadas y en verde.
 - [ ] Manejo de errores y logging estructurado implementados.
-- [ ] Reglas Firebase revisadas y aplicadas.
+- [ ] Politicas de acceso a datos SQL revisadas y aplicadas.
 - [ ] Integracion Wger con cache y fallback validada (si aplica).
 - [ ] Comparativas de progreso correctas y trazables (si aplica).
 - [ ] UI con estados de carga/error/vacio implementados mediante `FeedbackMessage`.
@@ -155,4 +167,4 @@ Cumplimiento y revision:
 - Se permiten excepciones solo si quedan justificadas por escrito, con alcance y tiempo
 	de vigencia definidos.
 
-**Version**: 1.0.0 | **Ratified**: 2026-05-05 | **Last Amended**: 2026-05-05
+**Version**: 2.1.0 | **Ratified**: 2026-05-05 | **Last Amended**: 2026-05-29

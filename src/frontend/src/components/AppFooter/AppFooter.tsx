@@ -21,9 +21,7 @@ export function AppFooter() {
     >
       <Container maxWidth="lg" sx={{ py: 1.5 }}>
         <Stack direction="column" spacing={0.5} justifyContent="center" alignItems="center">
-          <Typography variant="body2" sx={{ fontWeight: 700, letterSpacing: 0.2, textAlign: 'center' }}>
-            {t('app.name')}
-          </Typography>
+         
           <Typography variant="caption" sx={{ opacity: 0.88, textAlign: 'center' }}>
             {t('footer.description', { year })}
           </Typography>

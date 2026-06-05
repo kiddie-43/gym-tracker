@@ -1,4 +1,4 @@
-import { type MouseEvent, useState } from 'react';
+import { type MouseEvent, useMemo, useState } from 'react';
 
 import AppBar from '@mui/material/AppBar';
 import Avatar from '@mui/material/Avatar';
@@ -19,16 +19,10 @@ import Stack from '@mui/material/Stack';
 import Toolbar from '@mui/material/Toolbar';
 import Typography from '@mui/material/Typography';
 import AdminPanelSettingsRoundedIcon from '@mui/icons-material/AdminPanelSettingsRounded';
-import FitnessCenterRoundedIcon from '@mui/icons-material/FitnessCenterRounded';
-import HomeRoundedIcon from '@mui/icons-material/HomeRounded';
-import InsightsRoundedIcon from '@mui/icons-material/InsightsRounded';
 import LogoutRoundedIcon from '@mui/icons-material/LogoutRounded';
 import MenuIcon from '@mui/icons-material/Menu';
 import PersonRoundedIcon from '@mui/icons-material/PersonRounded';
-import RestaurantMenuRoundedIcon from '@mui/icons-material/RestaurantMenuRounded';
-import SettingsRoundedIcon from '@mui/icons-material/SettingsRounded';
 import SportsGymnasticsRoundedIcon from '@mui/icons-material/SportsGymnasticsRounded';
-import RiceBowlRoundedIcon from '@mui/icons-material/RiceBowlRounded';
 import type { SelectChangeEvent } from '@mui/material/Select';
 import type { SvgIconProps } from '@mui/material/SvgIcon';
 import { useTranslation } from 'react-i18next';
@@ -45,14 +39,8 @@ interface NavigationLink {
 }
 
 const links: NavigationLink[] = [
-  { to: '/', labelKey: 'nav.overview', icon: HomeRoundedIcon },
   { to: '/administration', labelKey: 'nav.administration', icon: AdminPanelSettingsRoundedIcon },
-  { to: '/workouts', labelKey: 'nav.workout', icon: FitnessCenterRoundedIcon },
-  { to: '/progress', labelKey: 'nav.progress', icon: InsightsRoundedIcon },
   { to: '/routines', labelKey: 'nav.routines', icon: SportsGymnasticsRoundedIcon },
-  { to: '/diets', labelKey: 'nav.diets', icon: RestaurantMenuRoundedIcon },
-  { to: '/meals', labelKey: 'nav.meals', icon: RiceBowlRoundedIcon },
-  { to: '/settings', labelKey: 'nav.settings', icon: SettingsRoundedIcon },
 ];
 
 export function AppHeader() {
@@ -61,7 +49,7 @@ export function AppHeader() {
   const location = useLocation();
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
-  const { profile } = useSelector(selectPreferencesState);
+  const { profile, headerTitle } = useSelector(selectPreferencesState);
 
   const displayFirstName = profile.firstName || t('user.defaultName');
   const displayLastName = profile.lastName || t('user.defaultLastName');
@@ -93,6 +81,15 @@ export function AppHeader() {
     if (link.to === '/') return location.pathname === '/';
     return location.pathname.startsWith(link.to);
   });
+  const routeTitle = activeLink ? t(activeLink.labelKey) : '';
+  const effectiveHeaderTitle = useMemo(() => {
+    const customTitle = headerTitle.trim();
+    if (customTitle) {
+      return customTitle;
+    }
+
+    return routeTitle || t('app.name');
+  }, [headerTitle, routeTitle, t]);
 
   return (
     <>
@@ -107,7 +104,7 @@ export function AppHeader() {
       >
         <Toolbar disableGutters sx={{ minHeight: 82, py: 1.25, pl: 1.25, pr: 1.5 }}>
           <Stack direction="row" alignItems="center" justifyContent="space-between" width="100%" gap={2}>
-            <Stack direction="row" spacing={1.5} alignItems="center">
+            <Stack direction="row" spacing={1.5} alignItems="center" sx={{ minWidth: 0, flex: 1 }}>
               <IconButton
                 aria-label={t('header.menuLabel')}
                 onClick={() => setIsMenuOpen(true)}
@@ -120,12 +117,18 @@ export function AppHeader() {
                 <MenuIcon />
               </IconButton>
 
-              <Box>
-                <Typography variant="h6" sx={{ fontWeight: 800, letterSpacing: 0.3 }}>
-                  {t('app.name')}
-                </Typography>
-                <Typography variant="body2" sx={{ opacity: 0.85 }}>
-                  {t('app.tagline')}
+              <Box sx={{ minWidth: 0, flex: 1 }}>
+                <Typography
+                  variant="h4"
+                  noWrap
+                  sx={{
+                    fontWeight: 800,
+                    letterSpacing: 0.2,
+                    fontSize: { xs: '1.55rem', md: '2rem' },
+                    lineHeight: 1.1,
+                  }}
+                >
+                  {effectiveHeaderTitle}
                 </Typography>
               </Box>
             </Stack>

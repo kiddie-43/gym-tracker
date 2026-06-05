@@ -1,0 +1,30 @@
+<svg width="1600" height="900" viewBox="0 0 1600 900" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1600" y2="900" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0E1C25"/>
+      <stop offset="1" stop-color="#22303D"/>
+    </linearGradient>
+    <radialGradient id="light" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(460 180) rotate(30) scale(600 340)">
+      <stop stop-color="#49C0D8" stop-opacity="0.45"/>
+      <stop offset="1" stop-color="#49C0D8" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="1600" height="900" fill="url(#bg)"/>
+  <rect width="1600" height="900" fill="url(#light)"/>
+
+  <g opacity="0.3" stroke="#C7EAF4" stroke-width="4">
+    <path d="M80 760H1520"/>
+    <path d="M120 700H1480"/>
+  </g>
+
+  <g opacity="0.86" fill="#DDE7EE">
+    <rect x="220" y="420" width="1160" height="26" rx="13"/>
+    <rect x="170" y="388" width="36" height="90" rx="8"/>
+    <rect x="124" y="370" width="34" height="126" rx="8"/>
+    <rect x="80" y="350" width="34" height="166" rx="8"/>
+
+    <rect x="1394" y="388" width="36" height="90" rx="8"/>
+    <rect x="1442" y="370" width="34" height="126" rx="8"/>
+    <rect x="1486" y="350" width="34" height="166" rx="8"/>
+  </g>
+</svg>

@@ -1,210 +1,166 @@
 import { createAction } from '@reduxjs/toolkit';
 
 import type {
-  CreateExerciseTrainingLogRequest,
-  RoutineCard,
-  RoutineDetail,
-  TrainingFlowState,
-  CatalogAvailability,
-} from '../../../interfaces/routines/routines';
+	IRoutine,
+	IRoutineFilter,
+} from '../../../interfaces/routines/IRoutines';
+import { PopUpCode } from '../../../enums/popUp/popUp';
+import { IPaginated } from '../../../interfaces/skeleton/IPaginated/IPaginated';
+import { IPayload } from '../../../interfaces/skeleton/IPayload/IPayload';
 import * as routinesApi from '../../../services/api/routines/routinesApi';
 import * as trainingFlowApi from '../../../services/api/routines/trainingFlowApi';
 import type { AppDispatch } from '../../store';
-import type { RoutineFormState, RoutinesFilters } from '../../states/routines/routinesState';
+import { routinesInitialState } from '../../states/routines/routinesState';
 
-export const setRoutinesList = createAction<RoutineCard[]>('routines/setList');
-export const setRoutinesForm = createAction<RoutineFormState>('routines/setForm');
-export const setRoutinesFilters = createAction<RoutinesFilters>('routines/setFilters');
+// ZONE 1: ACTIONS BASICAS (REDUCER)
+export const setRoutinesList = createAction<IPaginated<IRoutine>>('routines/setList');
+export const setRoutinesForm = createAction<IRoutine>('routines/setForm');
+export const setRoutinesFilters = createAction<IRoutineFilter>('routines/setFilters');
 export const setRoutinesLoading = createAction<boolean>('routines/setLoading');
 export const setRoutinesError = createAction<string | null>('routines/setError');
-export const setRoutinesPopUpCode = createAction<string | null>('routines/setPopUpCode');
-export const setSelectedRoutine = createAction<RoutineDetail | null>('routines/setSelectedRoutine');
-export const setTrainingFlowState = createAction<TrainingFlowState | null>('routines/setTrainingFlowState');
-export const setCatalogAvailability = createAction<CatalogAvailability | null>('routines/setCatalogAvailability');
+export const setRoutinesPopUpCode = createAction<PopUpCode>('routines/setPopUpCode');
+export const setSelectedRoutine = createAction<IRoutine | null>('routines/setSelectedRoutine');
+export const setTrainingFlowState = createAction<Awaited<ReturnType<typeof trainingFlowApi.getTrainingFlowActive>>>('routines/setTrainingFlowState');
+export const setCatalogAvailability = createAction<unknown | null>('routines/setCatalogAvailability');
 export const resetRoutines = createAction('routines/reset');
+export const updateRoutinesForm = createAction<IPayload>('routines/updateForm');
+// END ZONE 1
 
-export const fetchRoutines = (includeDeleted = false) => async (dispatch: AppDispatch) => {
-  dispatch(setRoutinesLoading(true));
-  dispatch(setRoutinesError(null));
+// ZONE 2: ACCIONES CRUD
+export const fetchRoutinesPage = (query: IRoutineFilter = {}) => async (dispatch: AppDispatch) => {
+	dispatch(setRoutinesLoading(true));
+	dispatch(setRoutinesError(null));
 
-  try {
-    const list = await routinesApi.listRoutines(includeDeleted);
-    dispatch(setRoutinesList(list));
-  } catch (error) {
-    dispatch(setRoutinesError(error instanceof Error ? error.message : 'Error loading routines'));
-  } finally {
-    dispatch(setRoutinesLoading(false));
-  }
+	try {
+		const page = await routinesApi.listRoutinesPage(query);
+		dispatch(setRoutinesList(page));
+	} catch (error) {
+		dispatch(setRoutinesError(error instanceof Error ? error.message : 'Error loading routines'));
+	} finally {
+		dispatch(setRoutinesLoading(false));
+	}
 };
 
-export const createRoutineAction = (title: string, goal?: string, includeDeleted = false) => async (dispatch: AppDispatch) => {
-  dispatch(setRoutinesLoading(true));
-  dispatch(setRoutinesError(null));
+export const getRoutineByIdAction = (id: string) => async (dispatch: AppDispatch) => {
+	dispatch(setRoutinesLoading(true));
+	dispatch(setRoutinesError(null));
 
-  try {
-    await routinesApi.createRoutine({ title, goal: goal || null });
-    const list = await routinesApi.listRoutines(includeDeleted);
-    dispatch(setRoutinesList(list));
-  } catch (error) {
-    dispatch(setRoutinesError(error instanceof Error ? error.message : 'Error creating routine'));
-  } finally {
-    dispatch(setRoutinesLoading(false));
-  }
+	try {
+		const routine = await routinesApi.getRoutineById(id);
+		dispatch(setSelectedRoutine(routine));
+	} catch (error) {
+		dispatch(setRoutinesError(error instanceof Error ? error.message : 'Error loading routine detail'));
+	} finally {
+		dispatch(setRoutinesLoading(false));
+	}
 };
 
-export const archiveRoutineAction = (routineId: string, includeDeleted = false) => async (dispatch: AppDispatch) => {
-  dispatch(setRoutinesLoading(true));
-  dispatch(setRoutinesError(null));
+export const AddAndEditRoutineAction = (routine: IRoutine) => async (dispatch: AppDispatch) => {
+	dispatch(setRoutinesLoading(true));
+	dispatch(setRoutinesError(null));
 
-  try {
-    await routinesApi.archiveRoutine(routineId);
-    const list = await routinesApi.listRoutines(includeDeleted);
-    dispatch(setRoutinesList(list));
-  } catch (error) {
-    dispatch(setRoutinesError(error instanceof Error ? error.message : 'Error archiving routine'));
-  } finally {
-    dispatch(setRoutinesLoading(false));
-  }
+	try {
+		if (routine.id) {
+			await routinesApi.updateRoutine(routine.id, routine);
+		} else {
+			await routinesApi.createRoutine(routine);
+		}
+		await dispatch(fetchRoutines());
+		dispatch(setRoutinePopUpCodeAction(PopUpCode.Default));
+	} catch (error) {
+		dispatch(setRoutinesError(error instanceof Error ? error.message : 'Error saving routine'));
+	} finally {
+		dispatch(setRoutinesLoading(false));
+	}
+};
+
+
+export const deleteRoutineAction = (id: string) => async (dispatch: AppDispatch) => {
+	dispatch(setRoutinesLoading(true));
+	dispatch(setRoutinesError(null));
+
+	try {
+		await routinesApi.deleteRoutine(id);
+		await dispatch(fetchRoutinesPage());
+		dispatch(resetRoutineFormAction());
+	} catch (error) {
+		dispatch(setRoutinesError(error instanceof Error ? error.message : 'Error deleting routine'));
+	} finally {
+		dispatch(setRoutinesLoading(false));
+	}
 };
 
 export const reactivateRoutineAction = (routineId: string, includeDeleted = false) => async (dispatch: AppDispatch) => {
-  dispatch(setRoutinesLoading(true));
-  dispatch(setRoutinesError(null));
+	dispatch(setRoutinesLoading(true));
+	dispatch(setRoutinesError(null));
 
-  try {
-    await routinesApi.reactivateRoutine(routineId);
-    const list = await routinesApi.listRoutines(includeDeleted);
-    dispatch(setRoutinesList(list));
-  } catch (error) {
-    dispatch(setRoutinesError(error instanceof Error ? error.message : 'Error reactivating routine'));
-  } finally {
-    dispatch(setRoutinesLoading(false));
-  }
+	try {
+		await routinesApi.reactivateRoutine(routineId);
+		await dispatch(fetchRoutines(includeDeleted));
+	} catch (error) {
+		dispatch(setRoutinesError(error instanceof Error ? error.message : 'Error reactivating routine'));
+	} finally {
+		dispatch(setRoutinesLoading(false));
+	}
+};
+// END ZONE 2
+
+// ZONE 3: ACCIONES BASICAS
+export const updateRoutineFormAction = (payload: IPayload) => (dispatch: AppDispatch) => {
+	dispatch(updateRoutinesForm(payload));
 };
 
-export const loadRoutineDetail = (routineId: string) => async (dispatch: AppDispatch) => {
-  const routine = await routinesApi.getRoutineById(routineId);
-  dispatch(setSelectedRoutine(routine));
+export const setRemoveRoutineAction = (routine: IRoutine) => (dispatch: AppDispatch) => {
+	dispatch(setRoutinesForm(routine));
+	dispatch(setRoutinePopUpCodeAction(PopUpCode.Delete));
 };
 
-export const createSessionAction = (routineId: string, name: string, daysOfWeek: string[]) => async (dispatch: AppDispatch) => {
-  await routinesApi.createRoutineSession(routineId, { name, daysOfWeek });
-  dispatch(loadRoutineDetail(routineId));
+export const resetRoutineFormAction = () => (dispatch: AppDispatch) => {
+	dispatch(setRoutinesForm(routinesInitialState.form));
 };
+export const setRoutineFormAction = (routine?: IRoutine) => (dispatch: AppDispatch) => {
+	if (routine) {
+		dispatch(setRoutinesForm(routine));
+		return;
+	} else {
+		dispatch(resetRoutineFormAction());
+	}
 
-export const addSessionExerciseAction = (routineId: string, sessionId: string, exerciseId: string, name: string) => async (dispatch: AppDispatch) => {
-  await routinesApi.addSessionExercise(routineId, sessionId, { exerciseId, name });
-  dispatch(loadRoutineDetail(routineId));
 };
-
-export const unlinkSessionExerciseAction = (routineId: string, sessionId: string, exerciseId: string) => async (dispatch: AppDispatch) => {
-  await routinesApi.unlinkSessionExercise(routineId, sessionId, exerciseId);
-  dispatch(loadRoutineDetail(routineId));
+export const setRoutinePopUpCodeAction = (code: PopUpCode) => (dispatch: AppDispatch) => {
+	dispatch(setRoutinesPopUpCode(code));
+	if (code === PopUpCode.Default) {
+		dispatch(resetRoutineFormAction());
+	}
 };
+// END ZONE 3
 
-export const updatePlannedSetAction = (
-  routineId: string,
-  sessionId: string,
-  exerciseId: string,
-  setId: string,
-  repetitions: number,
-  weightKg: number,
-) => async (dispatch: AppDispatch) => {
-  await routinesApi.updatePlannedSet(routineId, sessionId, exerciseId, setId, { repetitions, weightKg });
-  dispatch(loadRoutineDetail(routineId));
-};
 
-export const deletePlannedSetAction = (
-  routineId: string,
-  sessionId: string,
-  exerciseId: string,
-  setId: string,
-) => async (dispatch: AppDispatch) => {
-  await routinesApi.deletePlannedSet(routineId, sessionId, exerciseId, setId);
-  dispatch(loadRoutineDetail(routineId));
-};
-
-export const saveExerciseTrainingLogAction = (request: CreateExerciseTrainingLogRequest) => async () => {
-  await trainingFlowApi.createExerciseTrainingLog(request);
-};
-
-export const startTrainingFlowAction = (routineId: string) => async (dispatch: AppDispatch) => {
-  const state = await trainingFlowApi.startTrainingFlow({ routineId });
-  dispatch(setTrainingFlowState(state));
-};
-
-export const cancelTrainingFlowAction = () => async (dispatch: AppDispatch) => {
-  await trainingFlowApi.cancelTrainingFlow();
-  dispatch(setTrainingFlowState(null));
-};
-
+// ZONE 4: ACCIONES TRAINING FLOW
 export const restoreTrainingFlowAction = () => async (dispatch: AppDispatch) => {
-  const state = await trainingFlowApi.getTrainingFlowActive();
-  dispatch(setTrainingFlowState(state));
+	dispatch(setRoutinesLoading(true));
+	dispatch(setRoutinesError(null));
+
+	try {
+		const trainingFlow = await trainingFlowApi.getTrainingFlowActive();
+		dispatch(setTrainingFlowState(trainingFlow));
+		dispatch(setCatalogAvailability(null));
+	} catch (error) {
+		dispatch(setRoutinesError(error instanceof Error ? error.message : 'Error restoring training flow'));
+	} finally {
+		dispatch(setRoutinesLoading(false));
+	}
 };
+// END ZONE 4
 
-export const fetchCatalogAvailabilityAction = () => async (dispatch: AppDispatch) => {
-  try {
-    const availability = await routinesApi.getCatalogAvailability();
-    dispatch(setCatalogAvailability(availability));
-  } catch {
-    dispatch(setCatalogAvailability(null));
-  }
-};
+// ZONE 5: ALIASES DE COMPATIBILIDAD
+// Compatibility aliases used by current routines UI.
+export const fetchRoutines = (includeDeleted = false) => fetchRoutinesPage({ includeDeleted } as IRoutineFilter);
+export const loadRoutineDetail = (routineId: string) => getRoutineByIdAction(routineId);
+export const archiveRoutineAction = (routineId: string) => deleteRoutineAction(routineId);
+// END ZONE 5
 
-export const updateTrainingFlowStepAction = (sessionId?: string, exerciseId?: string) => async (dispatch: AppDispatch) => {
-  try {
-    const currentState = await trainingFlowApi.getTrainingFlowActive();
-    if (!currentState) return;
 
-    const nextStepOrder: TrainingFlowState['stepNode'][] = ['routine', 'session', 'exercise', 'exerciseData'];
-    const currentIndex = nextStepOrder.indexOf(currentState.stepNode);
-    const nextIndex = Math.min(currentIndex + 1, nextStepOrder.length - 1);
 
-    const updatedState = await trainingFlowApi.updateTrainingFlowActive({
-      routineId: currentState.routineId,
-      sessionId: sessionId ?? currentState.sessionId,
-      exerciseId: exerciseId ?? currentState.exerciseId,
-      stepNode: nextStepOrder[nextIndex],
-    });
 
-    dispatch(setTrainingFlowState(updatedState));
-  } catch (error) {
-    dispatch(setRoutinesError(error instanceof Error ? error.message : 'Error updating training flow'));
-  }
-};
 
-export const previousTrainingFlowStepAction = () => async (dispatch: AppDispatch) => {
-  try {
-    const currentState = await trainingFlowApi.getTrainingFlowActive();
-    if (!currentState) return;
-
-    const previousStepOrder: TrainingFlowState['stepNode'][] = ['routine', 'session', 'exercise', 'exerciseData'];
-    const currentIndex = previousStepOrder.indexOf(currentState.stepNode);
-    const previousIndex = Math.max(currentIndex - 1, 0);
-
-    let sessionId = currentState.sessionId;
-    let exerciseId = currentState.exerciseId;
-
-    // Clear IDs when going back to avoid confusion
-    if (previousIndex < currentIndex) {
-      if (previousIndex < 1) {
-        sessionId = null;
-        exerciseId = null;
-      } else if (previousIndex < 2) {
-        exerciseId = null;
-      }
-    }
-
-    const updatedState = await trainingFlowApi.updateTrainingFlowActive({
-      routineId: currentState.routineId,
-      sessionId,
-      exerciseId,
-      stepNode: previousStepOrder[previousIndex],
-    });
-
-    dispatch(setTrainingFlowState(updatedState));
-  } catch (error) {
-    dispatch(setRoutinesError(error instanceof Error ? error.message : 'Error updating training flow'));
-  }
-};

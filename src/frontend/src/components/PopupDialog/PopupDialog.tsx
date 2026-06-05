@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { forwardRef, type ReactElement, type ReactNode, type Ref } from 'react';
 
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded';
 import Button from '@mui/material/Button';
@@ -7,9 +7,12 @@ import DialogActions from '@mui/material/DialogActions';
 import DialogContent from '@mui/material/DialogContent';
 import DialogTitle from '@mui/material/DialogTitle';
 import IconButton from '@mui/material/IconButton';
+import Slide from '@mui/material/Slide';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
-import type { Breakpoint } from '@mui/material/styles';
+import useMediaQuery from '@mui/material/useMediaQuery';
+import { useTheme, type Breakpoint } from '@mui/material/styles';
+import type { TransitionProps } from '@mui/material/transitions';
 
 type PopupDialogProps = {
   open: boolean;
@@ -25,6 +28,13 @@ type PopupDialogProps = {
   maxWidth?: Breakpoint;
 };
 
+const MobileTransition = forwardRef(function MobileTransition(
+  props: TransitionProps & { children: ReactElement },
+  ref: Ref<unknown>,
+) {
+  return <Slide direction="up" ref={ref} {...props} />;
+});
+
 export function PopupDialog({
   open,
   title,
@@ -38,8 +48,38 @@ export function PopupDialog({
   isSaving = false,
   maxWidth = 'sm',
 }: PopupDialogProps) {
+  const theme = useTheme();
+  const isCompactViewport = useMediaQuery(theme.breakpoints.down('md'));
+
   return (
-    <Dialog open={open} onClose={onClose} fullWidth maxWidth={maxWidth}>
+    <Dialog
+      open={open}
+      onClose={onClose}
+      fullWidth
+      maxWidth={isCompactViewport ? false : maxWidth}
+      TransitionComponent={isCompactViewport ? MobileTransition : undefined}
+      sx={
+        isCompactViewport
+          ? {
+            '& .MuiDialog-container': {
+              alignItems: 'flex-end',
+            },
+            '& .MuiDialog-paper': {
+              m: 0,
+              width: '100%',
+              maxWidth: '100%',
+              minHeight: '50dvh',
+              maxHeight: '90dvh',
+              borderTopLeftRadius: 20,
+              borderTopRightRadius: 20,
+              borderBottomLeftRadius: 0,
+              borderBottomRightRadius: 0,
+              overflow: 'hidden',
+            },
+          }
+          : undefined
+      }
+    >
       <DialogTitle
         sx={{
           pb: 1,
@@ -53,8 +93,17 @@ export function PopupDialog({
           <Typography variant="h6" sx={{ fontWeight: 700 }}>
             {title}
           </Typography>
-          <IconButton size="small" onClick={onClose} aria-label={closeLabel} sx={{ color: 'inherit' }}>
-            <CloseRoundedIcon fontSize="small" />
+          <IconButton
+            size={isCompactViewport ? 'medium' : 'small'}
+            onClick={onClose}
+            aria-label={closeLabel}
+            sx={{
+              color: 'inherit',
+              width: isCompactViewport ? 40 : 32,
+              height: isCompactViewport ? 40 : 32,
+            }}
+          >
+            <CloseRoundedIcon sx={{ fontSize: isCompactViewport ? 24 : 18 }} />
           </IconButton>
         </Stack>
       </DialogTitle>
@@ -70,6 +119,7 @@ export function PopupDialog({
       <DialogActions
         sx={{
           justifyContent: 'flex-end',
+          gap: isCompactViewport ? 1.25 : 1,
           px: 3,
           pb: 2,
           pt: 1.5,
@@ -78,16 +128,28 @@ export function PopupDialog({
           bgcolor: 'background.paper',
         }}
       >
-        <Button size="small" variant="outlined" onClick={onClose}>
+        <Button
+          size={isCompactViewport ? 'medium' : 'small'}
+          variant="outlined"
+          onClick={onClose}
+          sx={{
+            minWidth: isCompactViewport ? 108 : 80,
+            fontSize: isCompactViewport ? '0.95rem' : undefined,
+          }}
+        >
           {closeLabel}
         </Button>
         <Button
-          size="small"
+          size={isCompactViewport ? 'medium' : 'small'}
           variant="contained"
           type={formId ? 'submit' : 'button'}
           form={formId}
           onClick={formId ? undefined : onSubmit}
           disabled={disableSave || isSaving}
+          sx={{
+            minWidth: isCompactViewport ? 108 : 80,
+            fontSize: isCompactViewport ? '0.95rem' : undefined,
+          }}
         >
           {saveLabel}
         </Button>

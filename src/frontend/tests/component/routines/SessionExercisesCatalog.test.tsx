@@ -2,41 +2,37 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
-import { RoutineSessionExercisesSection } from '../../../src/features/routines/components/RoutineSessionExercisesSection';
+import { ExerciseList } from '../../../src/pages/routines/list/ExerciseList';
 
 describe('Session exercises catalog', () => {
-  it('adds from catalog and unlinks exercise from card', async () => {
+  it('supports selecting and unlinking an exercise card', async () => {
     const user = userEvent.setup();
-    const onAddExercise = vi.fn();
+    const onExerciseSelect = vi.fn();
+    const onLinkExercise = vi.fn();
     const onUnlinkExercise = vi.fn();
 
     render(
-      <RoutineSessionExercisesSection
-        routineId="r1"
-        session={{
-          id: 's1',
-          name: 'Dia A',
-          daysOfWeek: ['monday'],
-          exercises: [
-            {
-              id: 'se1',
-              exerciseId: 'exercise-1',
-              name: 'Press banca',
-              plannedSets: [{ id: 'ps1', repetitions: 8, weightKg: 20, order: 1 }],
-            },
-          ],
-        }}
-        onAddExercise={onAddExercise}
+      <ExerciseList
+        exercises={[
+          {
+            id: 'se1',
+            exerciseId: 'exercise-1',
+            name: 'Press banca',
+          },
+        ]}
+        onExerciseSelect={onExerciseSelect}
+        onLinkExercise={onLinkExercise}
         onUnlinkExercise={onUnlinkExercise}
-        onUpdateSet={vi.fn()}
-        onDeleteSet={vi.fn()}
       />,
     );
 
-    await user.click(screen.getByRole('button', { name: /agregar ejercicio/i }));
-    expect(onAddExercise).toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: /vincular ejercicio/i })).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: /quitar ejercicio/i }));
-    expect(onUnlinkExercise).toHaveBeenCalledWith('r1', 's1', 'se1');
+    await user.click(screen.getByText('Press banca'));
+    expect(onExerciseSelect).toHaveBeenCalledWith('se1');
+
+    await user.click(screen.getByLabelText(/desvincular press banca/i));
+    await user.click(screen.getByRole('button', { name: /^desvincular$/i }));
+    expect(onUnlinkExercise).toHaveBeenCalledWith('se1');
   });
 });

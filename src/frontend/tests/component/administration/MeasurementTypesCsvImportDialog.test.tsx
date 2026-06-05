@@ -29,9 +29,9 @@ describe('MeasurementTypesCsvImportDialog', () => {
     renderDialog(importMock);
 
     const csv = [
-      'key,name,unit,dataType,category,description',
-      'WEIGHT,Peso,kg,decimal,strength,Carga',
-      'DURATION,Duracion,min,time,cardio,Tiempo total',
+      'code,name,description',
+      'WEIGHT,Peso,Carga',
+      'DURATION,Duracion,Tiempo total',
     ].join('\n');
 
     const file = new File([csv], 'measurement-types.csv', { type: 'text/csv' });
@@ -52,19 +52,13 @@ describe('MeasurementTypesCsvImportDialog', () => {
       expect(importMock).toHaveBeenCalledTimes(1);
       expect(importMock).toHaveBeenCalledWith([
         {
-          key: 'WEIGHT',
+          code: 'WEIGHT',
           name: 'Peso',
-          unit: 'kg',
-          dataType: 'decimal',
-          category: 'strength',
           description: 'Carga',
         },
         {
-          key: 'DURATION',
+          code: 'DURATION',
           name: 'Duracion',
-          unit: 'min',
-          dataType: 'time',
-          category: 'cardio',
           description: 'Tiempo total',
         },
       ]);

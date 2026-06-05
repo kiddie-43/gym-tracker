@@ -1,6 +1,7 @@
 using FluentAssertions;
 
 using GymTracker.Application.Admin.MeasurementTypes;
+using GymTracker.Domain.Entities;
 
 namespace GymTracker.Application.UnitTests.Admin.MeasurementTypes;
 
@@ -45,48 +46,56 @@ public sealed class MeasurementTypeValidationTests
 
     private sealed class FakeMeasurementTypeRepository : IMeasurementTypeRepository
     {
-        public Task<MeasurementTypesPageResponse> ListPageAsync(
-            bool includeInactive = false,
-            string? search = null,
-            string? code = null,
-            string sortBy = "code",
-            string sortDirection = "asc",
-            int page = 1,
-            int pageSize = 10,
-            CancellationToken cancellationToken = default)
-            => Task.FromResult(new MeasurementTypesPageResponse(Array.Empty<MeasurementTypeResponse>(), 0, page, pageSize));
+        private readonly Dictionary<string, MeasurementType> _store = new(StringComparer.OrdinalIgnoreCase);
 
-        public Task<IReadOnlyCollection<AssignableMeasurementTypeResponse>> ListAssignableAsync(CancellationToken cancellationToken = default)
-            => Task.FromResult<IReadOnlyCollection<AssignableMeasurementTypeResponse>>(Array.Empty<AssignableMeasurementTypeResponse>());
+        public Task<MeasurementType?> GetByIdAsync(string id, CancellationToken cancellationToken = default)
+            => Task.FromResult(_store.GetValueOrDefault(id));
 
-        public Task<MeasurementTypeResponse?> GetByIdAsync(string id, CancellationToken cancellationToken = default)
-            => Task.FromResult<MeasurementTypeResponse?>(null);
-
-        public Task<MeasurementTypeResponse> CreateAsync(UpsertMeasurementTypeRequest request, CancellationToken cancellationToken = default)
+        public Task<IReadOnlyCollection<MeasurementType>> ListAsync(bool includeDeleted = false, CancellationToken cancellationToken = default)
         {
-            var code = (request.Code ?? string.Empty).Trim().ToUpperInvariant().Replace(' ', '_');
-            if (string.IsNullOrWhiteSpace(code))
-            {
-                throw new ArgumentException("Code is required.", nameof(request.Code));
-            }
+            var rows = includeDeleted
+                ? _store.Values.ToArray()
+                : _store.Values.Where(item => !item.IsDeleted).ToArray();
 
-            var name = string.IsNullOrWhiteSpace(request.Name) ? code : request.Name.Trim();
-
-            return Task.FromResult(new MeasurementTypeResponse(
-                Id: Guid.NewGuid().ToString("N"),
-                Code: code,
-                Name: name,
-                Description: request.Description,
-                IsDeleted: false));
+            return Task.FromResult<IReadOnlyCollection<MeasurementType>>(rows);
         }
 
-        public Task<MeasurementTypeResponse?> UpdateAsync(string id, UpsertMeasurementTypeRequest request, CancellationToken cancellationToken = default)
-            => Task.FromResult<MeasurementTypeResponse?>(null);
+        public Task<bool> ExistsActiveCodeAsync(string code, string? excludeId = null, CancellationToken cancellationToken = default)
+        {
+            var exists = _store.Values.Any(item =>
+                !item.IsDeleted
+                && string.Equals(item.Code, code, StringComparison.OrdinalIgnoreCase)
+                && !string.Equals(item.Id, excludeId, StringComparison.OrdinalIgnoreCase));
 
-        public Task<bool> DeleteAsync(string id, CancellationToken cancellationToken = default)
-            => Task.FromResult(true);
+            return Task.FromResult(exists);
+        }
 
-        public Task<MeasurementTypeResponse?> ReactivateAsync(string id, CancellationToken cancellationToken = default)
-            => Task.FromResult<MeasurementTypeResponse?>(null);
+        public Task SaveAsync(MeasurementType entity, CancellationToken cancellationToken = default)
+        {
+            _store[entity.Id] = entity;
+            return Task.CompletedTask;
+        }
+
+        public Task<bool> DeleteAsync(string id, DateTimeOffset now, CancellationToken cancellationToken = default)
+        {
+            if (!_store.TryGetValue(id, out var entity))
+            {
+                return Task.FromResult(false);
+            }
+
+            entity.SoftDelete(now);
+            return Task.FromResult(true);
+        }
+
+        public Task<bool> ReactivateAsync(string id, CancellationToken cancellationToken = default)
+        {
+            if (!_store.TryGetValue(id, out var entity))
+            {
+                return Task.FromResult(false);
+            }
+
+            entity.Reactivate();
+            return Task.FromResult(true);
+        }
     }
 }

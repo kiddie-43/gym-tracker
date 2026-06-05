@@ -12,7 +12,7 @@ public sealed class RoutineSessionDayConflictTests
     public async Task CreateSession_ShouldThrow_WhenDayAlreadyUsed()
     {
         var repository = new InMemoryRoutineRepository();
-        var routine = new Routine { UserId = "user-1", Title = "Routine" };
+        var routine = new Routine { UserId = "user-1", Description = "Routine" };
         routine.Sessions.Add(new RoutineSession { RoutineId = routine.Id, Name = "A", DaysOfWeek = new List<string> { "monday" } });
         await repository.UpsertAsync(routine);
 

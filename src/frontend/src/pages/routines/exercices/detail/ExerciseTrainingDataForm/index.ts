@@ -1,0 +1,1 @@
+export { ExerciseTrainingDataForm } from './ExerciseTrainingDataForm';

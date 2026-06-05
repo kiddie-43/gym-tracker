@@ -39,7 +39,7 @@ describe('RoutinesPage states', () => {
 
     render(<RoutinesPage />);
 
-    expect(screen.getByRole('progressbar')).toBeInTheDocument();
+    expect(document.querySelectorAll('.MuiSkeleton-root').length).toBeGreaterThan(0);
   });
 
   it('shows error state', () => {
@@ -87,6 +87,6 @@ describe('RoutinesPage states', () => {
 
     render(<RoutinesPage />);
 
-    expect(screen.getByText(/todavia no hay rutinas/i)).toBeInTheDocument();
+    expect(screen.getByText(/crear nueva rutina/i)).toBeInTheDocument();
   });
 });
