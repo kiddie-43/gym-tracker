@@ -1,0 +1,477 @@
+openapi: 3.0.3
+info:
+  title: Gym Tracker Admin Catalogs API
+  version: 0.1.0
+  description: Contrato para panel de administracion de musculos, mediciones y ejercicios.
+servers:
+  - url: http://localhost:5000
+    description: Local development
+security:
+  - bearerAuth: []
+paths:
+  /api/admin/muscles:
+    get:
+      summary: Listar musculos
+      tags: [Admin Muscles]
+      parameters:
+        - $ref: '#/components/parameters/IncludeDeleted'
+      responses:
+        '200':
+          description: Lista de musculos
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Muscle'
+    post:
+      summary: Crear musculo
+      tags: [Admin Muscles]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpsertMuscleRequest'
+      responses:
+        '201':
+          description: Musculo creado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Muscle'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /api/admin/muscles/{id}:
+    get:
+      summary: Obtener musculo por id
+      tags: [Admin Muscles]
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: Musculo encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Muscle'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      summary: Actualizar musculo
+      tags: [Admin Muscles]
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpsertMuscleRequest'
+      responses:
+        '200':
+          description: Musculo actualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Muscle'
+        '409':
+          $ref: '#/components/responses/Conflict'
+    delete:
+      summary: Soft delete de musculo
+      tags: [Admin Muscles]
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '204':
+          description: Musculo borrado logicamente
+  /api/admin/muscles/{id}/reactivate:
+    post:
+      summary: Reactivar musculo borrado
+      tags: [Admin Muscles]
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: Musculo reactivado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Muscle'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /api/admin/muscles/import-csv:
+    post:
+      summary: Importar musculos por lote CSV parseado
+      tags: [Admin Muscles]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ImportMusclesRequest'
+      responses:
+        '200':
+          description: Resultado de importacion parcial
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportMusclesResult'
+
+  /api/admin/measurement-types:
+    get:
+      summary: Listar mediciones
+      tags: [Admin Measurement Types]
+      parameters:
+        - $ref: '#/components/parameters/IncludeDeleted'
+      responses:
+        '200':
+          description: Lista de mediciones
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MeasurementType'
+    post:
+      summary: Crear medicion
+      tags: [Admin Measurement Types]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpsertMeasurementTypeRequest'
+      responses:
+        '201':
+          description: Medicion creada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeasurementType'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /api/admin/measurement-types/{id}:
+    get:
+      summary: Obtener medicion por id
+      tags: [Admin Measurement Types]
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: Medicion encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeasurementType'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      summary: Actualizar medicion
+      tags: [Admin Measurement Types]
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpsertMeasurementTypeRequest'
+      responses:
+        '200':
+          description: Medicion actualizada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeasurementType'
+        '409':
+          $ref: '#/components/responses/Conflict'
+    delete:
+      summary: Soft delete de medicion
+      tags: [Admin Measurement Types]
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '204':
+          description: Medicion borrada logicamente
+  /api/admin/measurement-types/{id}/reactivate:
+    post:
+      summary: Reactivar medicion
+      tags: [Admin Measurement Types]
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: Medicion reactivada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeasurementType'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /api/admin/exercises:
+    get:
+      summary: Listar ejercicios
+      tags: [Admin Exercises]
+      parameters:
+        - $ref: '#/components/parameters/IncludeDeleted'
+      responses:
+        '200':
+          description: Lista de ejercicios
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Exercise'
+    post:
+      summary: Crear ejercicio
+      tags: [Admin Exercises]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpsertExerciseRequest'
+      responses:
+        '201':
+          description: Ejercicio creado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Exercise'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /api/admin/exercises/{id}:
+    get:
+      summary: Obtener ejercicio por id
+      tags: [Admin Exercises]
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: Ejercicio encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Exercise'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      summary: Actualizar ejercicio
+      tags: [Admin Exercises]
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpsertExerciseRequest'
+      responses:
+        '200':
+          description: Ejercicio actualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Exercise'
+        '409':
+          $ref: '#/components/responses/Conflict'
+    delete:
+      summary: Soft delete de ejercicio
+      tags: [Admin Exercises]
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '204':
+          description: Ejercicio borrado logicamente
+  /api/admin/exercises/{id}/reactivate:
+    post:
+      summary: Reactivar ejercicio
+      tags: [Admin Exercises]
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: Ejercicio reactivado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Exercise'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+components:
+  parameters:
+    Id:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+    IncludeDeleted:
+      name: includeDeleted
+      in: query
+      required: false
+      schema:
+        type: boolean
+        default: false
+
+  responses:
+    Conflict:
+      description: Conflicto de unicidad o regla de negocio
+    NotFound:
+      description: Recurso no encontrado
+
+  schemas:
+    Muscle:
+      type: object
+      required: [id, code]
+      properties:
+        id: { type: string }
+        code: { type: string }
+        description: { type: string, nullable: true }
+        deletedAt: { type: string, format: date-time, nullable: true }
+    MeasurementField:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string }
+    MeasurementType:
+      type: object
+      required: [id, name, fields]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        fields:
+          type: array
+          items:
+            $ref: '#/components/schemas/MeasurementField'
+        deletedAt: { type: string, format: date-time, nullable: true }
+    Exercise:
+      type: object
+      required: [id, code, name, difficulty, category, primaryMuscleIds, measurementTypeId]
+      properties:
+        id: { type: string }
+        code: { type: string }
+        name: { type: string }
+        description: { type: string, nullable: true }
+        difficulty:
+          type: string
+          enum: [Beginner, Intermediate, Advanced]
+        category:
+          type: string
+          enum: [Strength, Cardio, Mobility, Stretching]
+        primaryMuscleIds:
+          type: array
+          items: { type: string }
+        secondaryMuscleIds:
+          type: array
+          items: { type: string }
+        measurementTypeId: { type: string }
+        images:
+          type: array
+          items: { type: string }
+        videos:
+          type: array
+          items: { type: string }
+        deletedAt: { type: string, format: date-time, nullable: true }
+
+    UpsertMuscleRequest:
+      type: object
+      required: [code]
+      properties:
+        code: { type: string }
+        description: { type: string, nullable: true }
+
+    UpsertMeasurementTypeRequest:
+      type: object
+      required: [name, fields]
+      properties:
+        name: { type: string }
+        fields:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/MeasurementField'
+
+    UpsertExerciseRequest:
+      type: object
+      required: [code, name, primaryMuscleIds]
+      description: |
+        Canonical request uses category, difficulty and measurementTypeId.
+        For backward compatibility, exerciseTypeId/exerciseTypeCode and formTypeId/formTypeCode are also accepted.
+      anyOf:
+        - required: [category, difficulty]
+        - required: [exerciseTypeId, exerciseTypeCode]
+      oneOf:
+        - required: [measurementTypeId]
+        - required: [formTypeId]
+      properties:
+        code: { type: string }
+        name: { type: string }
+        description: { type: string, nullable: true }
+        difficulty:
+          type: string
+          enum: [Beginner, Intermediate, Advanced]
+        category:
+          type: string
+          enum: [Strength, Cardio, Mobility, Stretching]
+        primaryMuscleIds:
+          type: array
+          minItems: 1
+          items: { type: string }
+        secondaryMuscleIds:
+          type: array
+          items: { type: string }
+        measurementTypeId: { type: string }
+        exerciseTypeId: { type: string }
+        exerciseTypeCode: { type: string }
+        formTypeId: { type: string }
+        formTypeCode: { type: string }
+        images:
+          type: array
+          items: { type: string }
+        videos:
+          type: array
+          items: { type: string }
+
+    ImportMusclesRequest:
+      type: object
+      required: [rows]
+      properties:
+        rows:
+          type: array
+          items:
+            type: object
+            properties:
+              name: { type: string }
+              code: { type: string }
+              description: { type: string, nullable: true }
+
+    ImportMusclesResult:
+      type: object
+      required: [totalRows, importedRows, rejectedRows, results]
+      properties:
+        totalRows: { type: integer }
+        importedRows: { type: integer }
+        rejectedRows: { type: integer }
+        results:
+          type: array
+          items:
+            type: object
+            required: [rowNumber, status]
+            properties:
+              rowNumber: { type: integer }
+              code: { type: string }
+              status:
+                type: string
+                enum: [Imported, Rejected]
+              reason: { type: string, nullable: true }
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

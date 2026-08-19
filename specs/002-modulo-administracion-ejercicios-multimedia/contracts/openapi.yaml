@@ -1,0 +1,1075 @@
+openapi: 3.0.3
+info:
+  title: Gym Tracker Admin Exercise Module API
+  version: 0.1.0
+  description: Contrato inicial para el modulo de administracion de ejercicios con multimedia.
+servers:
+  - url: http://localhost:5000
+    description: Local development
+security:
+  - bearerAuth: []
+paths:
+  /api/admin/muscle-groups:
+    get:
+      summary: Listar grupos musculares admin
+      tags: [Admin Muscle Groups]
+      parameters:
+        - $ref: '#/components/parameters/IncludeInactive'
+      responses:
+        '200':
+          description: Lista de grupos musculares
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MuscleGroup'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      summary: Crear grupo muscular
+      tags: [Admin Muscle Groups]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpsertMuscleGroupRequest'
+      responses:
+        '201':
+          description: Grupo muscular creado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MuscleGroup'
+        '400':
+          $ref: '#/components/responses/ValidationProblem'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/admin/muscle-groups/{id}:
+    get:
+      summary: Obtener grupo muscular por id
+      tags: [Admin Muscle Groups]
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: Grupo muscular encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MuscleGroup'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      summary: Actualizar grupo muscular
+      tags: [Admin Muscle Groups]
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpsertMuscleGroupRequest'
+      responses:
+        '200':
+          description: Grupo muscular actualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MuscleGroup'
+        '400':
+          $ref: '#/components/responses/ValidationProblem'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      summary: Borrado logico de grupo muscular
+      tags: [Admin Muscle Groups]
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '204':
+          description: Grupo muscular desactivado o marcado como eliminado logicamente
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/admin/muscles:
+    get:
+      summary: Listar musculos admin
+      tags: [Admin Muscles]
+      parameters:
+        - $ref: '#/components/parameters/IncludeInactive'
+      responses:
+        '200':
+          description: Lista de musculos
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Muscle'
+    post:
+      summary: Crear musculo
+      tags: [Admin Muscles]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpsertMuscleRequest'
+      responses:
+        '201':
+          description: Musculo creado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Muscle'
+        '400':
+          $ref: '#/components/responses/ValidationProblem'
+  /api/admin/muscles/{id}:
+    get:
+      summary: Obtener musculo por id
+      tags: [Admin Muscles]
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: Musculo encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Muscle'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      summary: Actualizar musculo
+      tags: [Admin Muscles]
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpsertMuscleRequest'
+      responses:
+        '200':
+          description: Musculo actualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Muscle'
+    delete:
+      summary: Borrado logico de musculo
+      tags: [Admin Muscles]
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '204':
+          description: Musculo desactivado logicamente
+
+  /api/admin/exercise-types:
+    get:
+      summary: Listar tipos de ejercicio
+      tags: [Admin Exercise Types]
+      parameters:
+        - $ref: '#/components/parameters/IncludeInactive'
+      responses:
+        '200':
+          description: Lista de tipos de ejercicio
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ExerciseType'
+    post:
+      summary: Crear tipo de ejercicio
+      tags: [Admin Exercise Types]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpsertExerciseTypeRequest'
+      responses:
+        '201':
+          description: Tipo de ejercicio creado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExerciseType'
+  /api/admin/exercise-types/{id}:
+    get:
+      summary: Obtener tipo de ejercicio por id
+      tags: [Admin Exercise Types]
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: Tipo de ejercicio encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExerciseType'
+    put:
+      summary: Actualizar tipo de ejercicio
+      tags: [Admin Exercise Types]
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpsertExerciseTypeRequest'
+      responses:
+        '200':
+          description: Tipo de ejercicio actualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExerciseType'
+    delete:
+      summary: Borrado logico de tipo de ejercicio
+      tags: [Admin Exercise Types]
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '204':
+          description: Tipo de ejercicio desactivado logicamente
+
+  /api/admin/exercise-form-types:
+    get:
+      summary: Listar tipos de formulario
+      tags: [Admin Exercise Form Types]
+      parameters:
+        - $ref: '#/components/parameters/IncludeInactive'
+      responses:
+        '200':
+          description: Lista de tipos de formulario
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ExerciseFormType'
+    post:
+      summary: Crear tipo de formulario
+      tags: [Admin Exercise Form Types]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpsertExerciseFormTypeRequest'
+      responses:
+        '201':
+          description: Tipo de formulario creado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExerciseFormType'
+  /api/admin/exercise-form-types/{id}:
+    get:
+      summary: Obtener tipo de formulario por id
+      tags: [Admin Exercise Form Types]
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: Tipo de formulario encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExerciseFormType'
+    put:
+      summary: Actualizar tipo de formulario
+      tags: [Admin Exercise Form Types]
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpsertExerciseFormTypeRequest'
+      responses:
+        '200':
+          description: Tipo de formulario actualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExerciseFormType'
+    delete:
+      summary: Borrado logico de tipo de formulario
+      tags: [Admin Exercise Form Types]
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '204':
+          description: Tipo de formulario desactivado logicamente
+
+  /api/admin/exercises:
+    get:
+      summary: Listar ejercicios admin
+      tags: [Admin Exercises]
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+        - $ref: '#/components/parameters/Query'
+        - $ref: '#/components/parameters/IncludeInactive'
+      responses:
+        '200':
+          description: Pagina de ejercicios admin
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PagedExerciseResponse'
+    post:
+      summary: Crear ejercicio admin
+      tags: [Admin Exercises]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpsertExerciseRequest'
+      responses:
+        '201':
+          description: Ejercicio creado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Exercise'
+  /api/admin/exercises/{id}:
+    get:
+      summary: Obtener ejercicio admin por id
+      tags: [Admin Exercises]
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: Ejercicio encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Exercise'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      summary: Actualizar ejercicio admin
+      tags: [Admin Exercises]
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpsertExerciseRequest'
+      responses:
+        '200':
+          description: Ejercicio actualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Exercise'
+    delete:
+      summary: Borrado logico de ejercicio admin
+      tags: [Admin Exercises]
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '204':
+          description: Ejercicio desactivado logicamente
+
+  /api/admin/exercises/{exerciseId}/media/upload-url:
+    post:
+      summary: Emitir URL firmada para subida de media
+      tags: [Admin Exercise Media]
+      parameters:
+        - $ref: '#/components/parameters/ExerciseId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateMediaUploadUrlRequest'
+      responses:
+        '200':
+          description: Ticket de subida generado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MediaUploadTicket'
+        '400':
+          $ref: '#/components/responses/ValidationProblem'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/admin/exercises/{exerciseId}/media:
+    get:
+      summary: Listar galeria multimedia de un ejercicio
+      tags: [Admin Exercise Media]
+      parameters:
+        - $ref: '#/components/parameters/ExerciseId'
+      responses:
+        '200':
+          description: Galeria del ejercicio
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ExerciseMedia'
+    post:
+      summary: Confirmar y registrar metadato de media subida
+      tags: [Admin Exercise Media]
+      parameters:
+        - $ref: '#/components/parameters/ExerciseId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConfirmExerciseMediaRequest'
+      responses:
+        '200':
+          description: Ejercicio actualizado con media confirmada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Exercise'
+    patch:
+      summary: Reordenar galeria multimedia
+      tags: [Admin Exercise Media]
+      parameters:
+        - $ref: '#/components/parameters/ExerciseId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReorderExerciseMediaRequest'
+      responses:
+        '200':
+          description: Ejercicio actualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Exercise'
+
+  /api/admin/exercises/{exerciseId}/media/{mediaId}:
+    patch:
+      summary: Actualizar metadatos de media
+      tags: [Admin Exercise Media]
+      parameters:
+        - $ref: '#/components/parameters/ExerciseId'
+        - $ref: '#/components/parameters/MediaId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateExerciseMediaRequest'
+      responses:
+        '200':
+          description: Ejercicio actualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Exercise'
+    delete:
+      summary: Eliminar media de ejercicio
+      tags: [Admin Exercise Media]
+      parameters:
+        - $ref: '#/components/parameters/ExerciseId'
+        - $ref: '#/components/parameters/MediaId'
+      responses:
+        '200':
+          description: Ejercicio actualizado sin el elemento eliminado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Exercise'
+
+  /api/admin/exercises/{exerciseId}/media/set-primary:
+    patch:
+      summary: Marcar media principal
+      tags: [Admin Exercise Media]
+      parameters:
+        - $ref: '#/components/parameters/ExerciseId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SetPrimaryExerciseMediaRequest'
+      responses:
+        '200':
+          description: Ejercicio actualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Exercise'
+
+  /api/workouts/exercise-catalog:
+    get:
+      summary: Buscar ejercicios admin activos para workouts
+      tags: [Workout Exercise Catalog]
+      parameters:
+        - $ref: '#/components/parameters/Query'
+        - in: query
+          name: muscleGroupIds
+          schema:
+            type: array
+            items:
+              type: string
+          style: form
+          explode: true
+      responses:
+        '200':
+          description: Lista de ejercicios admin activos para selector de workouts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/WorkoutCatalogExercise'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    Id:
+      in: path
+      name: id
+      required: true
+      schema:
+        type: string
+    ExerciseId:
+      in: path
+      name: exerciseId
+      required: true
+      schema:
+        type: string
+    MediaId:
+      in: path
+      name: mediaId
+      required: true
+      schema:
+        type: string
+    Page:
+      in: query
+      name: page
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+    PageSize:
+      in: query
+      name: pageSize
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+    Query:
+      in: query
+      name: query
+      schema:
+        type: string
+    IncludeInactive:
+      in: query
+      name: includeInactive
+      schema:
+        type: boolean
+        default: false
+  responses:
+    Unauthorized:
+      description: Token invalido o ausente
+    Forbidden:
+      description: Usuario autenticado sin permisos admin
+    NotFound:
+      description: Recurso no encontrado
+    ValidationProblem:
+      description: Error de validacion
+  schemas:
+    PagedMuscleGroupResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/MuscleGroup'
+        page:
+          type: integer
+        pageSize:
+          type: integer
+        totalCount:
+          type: integer
+    PagedMuscleResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Muscle'
+        page:
+          type: integer
+        pageSize:
+          type: integer
+        totalCount:
+          type: integer
+    PagedExerciseTypeResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ExerciseType'
+        page:
+          type: integer
+        pageSize:
+          type: integer
+        totalCount:
+          type: integer
+    PagedExerciseFormTypeResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ExerciseFormType'
+        page:
+          type: integer
+        pageSize:
+          type: integer
+        totalCount:
+          type: integer
+    PagedExerciseResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Exercise'
+        page:
+          type: integer
+        pageSize:
+          type: integer
+        totalCount:
+          type: integer
+    MuscleGroup:
+      type: object
+      required: [id, name, code, active, isDeleted]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        code:
+          type: string
+        description:
+          type: string
+          nullable: true
+        active:
+          type: boolean
+        isDeleted:
+          type: boolean
+    UpsertMuscleGroupRequest:
+      type: object
+      required: [name, code]
+      properties:
+        name:
+          type: string
+        code:
+          type: string
+        description:
+          type: string
+          nullable: true
+        active:
+          type: boolean
+          default: true
+    Muscle:
+      type: object
+      required: [id, name, code, muscleGroupIds, active, isDeleted]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        code:
+          type: string
+        description:
+          type: string
+          nullable: true
+        muscleGroupIds:
+          type: array
+          items:
+            type: string
+        active:
+          type: boolean
+        isDeleted:
+          type: boolean
+    UpsertMuscleRequest:
+      type: object
+      required: [name, code, muscleGroupIds]
+      properties:
+        name:
+          type: string
+        code:
+          type: string
+        description:
+          type: string
+          nullable: true
+        muscleGroupIds:
+          type: array
+          items:
+            type: string
+        active:
+          type: boolean
+          default: true
+    ExerciseType:
+      type: object
+      required: [id, name, code, requiresUnits, active, isDeleted]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        code:
+          type: string
+        description:
+          type: string
+          nullable: true
+        primaryUnit:
+          type: string
+          nullable: true
+        requiresUnits:
+          type: boolean
+        active:
+          type: boolean
+        isDeleted:
+          type: boolean
+    UpsertExerciseTypeRequest:
+      type: object
+      required: [name, code, requiresUnits]
+      properties:
+        name:
+          type: string
+        code:
+          type: string
+        description:
+          type: string
+          nullable: true
+        primaryUnit:
+          type: string
+          nullable: true
+        requiresUnits:
+          type: boolean
+        active:
+          type: boolean
+          default: true
+    ExerciseFormField:
+      type: object
+      required: [id, name, label, type, required, sortOrder]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        label:
+          type: string
+        type:
+          type: string
+        required:
+          type: boolean
+        unit:
+          type: string
+          nullable: true
+        min:
+          type: number
+          nullable: true
+        max:
+          type: number
+          nullable: true
+        options:
+          type: array
+          nullable: true
+          items:
+            type: string
+        sortOrder:
+          type: integer
+    ExerciseFormType:
+      type: object
+      required: [id, name, code, fields, active, isDeleted]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        code:
+          type: string
+        description:
+          type: string
+          nullable: true
+        fields:
+          type: array
+          items:
+            $ref: '#/components/schemas/ExerciseFormField'
+        active:
+          type: boolean
+        isDeleted:
+          type: boolean
+    UpsertExerciseFormTypeRequest:
+      type: object
+      required: [name, code, fields]
+      properties:
+        name:
+          type: string
+        code:
+          type: string
+        description:
+          type: string
+          nullable: true
+        fields:
+          type: array
+          items:
+            $ref: '#/components/schemas/ExerciseFormField'
+        active:
+          type: boolean
+          default: true
+    ExerciseMedia:
+      type: object
+      required: [mediaId, mediaType, storagePath, contentType, sizeBytes, sortOrder, isPrimary, active, isDeleted]
+      properties:
+        mediaId:
+          type: string
+        mediaType:
+          type: string
+          enum: [image, video]
+        title:
+          type: string
+          nullable: true
+        storagePath:
+          type: string
+        thumbnailPath:
+          type: string
+          nullable: true
+        signedUrl:
+          type: string
+          nullable: true
+        contentType:
+          type: string
+        fileName:
+          type: string
+        sizeBytes:
+          type: integer
+          format: int64
+        sortOrder:
+          type: integer
+        isPrimary:
+          type: boolean
+        active:
+          type: boolean
+        isDeleted:
+          type: boolean
+    Exercise:
+      type: object
+      required: [id, code, name, exerciseTypeId, formTypeId, muscleGroupIds, primaryMuscleIds, secondaryMuscleIds, media, active, isDeleted]
+      properties:
+        id:
+          type: string
+        code:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        exerciseTypeId:
+          type: string
+        formTypeId:
+          type: string
+        muscleGroupIds:
+          type: array
+          items:
+            type: string
+        primaryMuscleIds:
+          type: array
+          items:
+            type: string
+        secondaryMuscleIds:
+          type: array
+          items:
+            type: string
+        difficulty:
+          type: string
+          nullable: true
+        coverMediaId:
+          type: string
+          nullable: true
+        media:
+          type: array
+          items:
+            $ref: '#/components/schemas/ExerciseMedia'
+        active:
+          type: boolean
+        isDeleted:
+          type: boolean
+    UpsertExerciseRequest:
+      type: object
+      required: [code, name, exerciseTypeId, formTypeId, muscleGroupIds, primaryMuscleIds, secondaryMuscleIds]
+      properties:
+        code:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        exerciseTypeId:
+          type: string
+        formTypeId:
+          type: string
+        muscleGroupIds:
+          type: array
+          items:
+            type: string
+        primaryMuscleIds:
+          type: array
+          items:
+            type: string
+        secondaryMuscleIds:
+          type: array
+          items:
+            type: string
+        difficulty:
+          type: string
+          nullable: true
+        active:
+          type: boolean
+          default: true
+    RequestUploadUrlRequest:
+      type: object
+      required: [fileName, mediaType, contentType, sizeBytes]
+      properties:
+        fileName:
+          type: string
+        mediaType:
+          type: integer
+          enum: [0, 1]
+        contentType:
+          type: string
+        sizeBytes:
+          type: integer
+          format: int64
+    CreateMediaUploadUrlRequest:
+      allOf:
+        - $ref: '#/components/schemas/RequestUploadUrlRequest'
+    MediaUploadTicket:
+      type: object
+      required: [exerciseId, mediaId, storagePath, uploadUrl, expiresAt, contentType, maxSizeBytes]
+      properties:
+        exerciseId:
+          type: string
+        mediaId:
+          type: string
+        storagePath:
+          type: string
+        uploadUrl:
+          type: string
+        expiresAt:
+          type: string
+          format: date-time
+        contentType:
+          type: string
+        maxSizeBytes:
+          type: integer
+          format: int64
+    ConfirmExerciseMediaRequest:
+      type: object
+      required: [mediaId, storagePath, mediaType, fileName, contentType, sizeBytes, sortOrder, isPrimary]
+      properties:
+        mediaId:
+          type: string
+        storagePath:
+          type: string
+        mediaType:
+          type: integer
+          enum: [0, 1]
+        title:
+          type: string
+          nullable: true
+        fileName:
+          type: string
+        contentType:
+          type: string
+        sizeBytes:
+          type: integer
+          format: int64
+        thumbnailPath:
+          type: string
+          nullable: true
+        sortOrder:
+          type: integer
+        isPrimary:
+          type: boolean
+    RegisterExerciseMediaRequest:
+      allOf:
+        - $ref: '#/components/schemas/ConfirmExerciseMediaRequest'
+    UpdateExerciseMediaRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          nullable: true
+        active:
+          type: boolean
+          nullable: true
+    SetPrimaryExerciseMediaRequest:
+      type: object
+      required: [mediaId]
+      properties:
+        mediaId:
+          type: string
+    ReorderExerciseMediaRequest:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+            required: [mediaId, sortOrder]
+            properties:
+              mediaId:
+                type: string
+              sortOrder:
+                type: integer
+    WorkoutCatalogExercise:
+      type: object
+      required: [id, name, muscleGroupIds, formTypeId]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        muscleGroupIds:
+          type: array
+          items:
+            type: string
+        formTypeId:
+          type: string
+        coverUrl:
+          type: string
+          nullable: true

@@ -1,0 +1,612 @@
+openapi: 3.0.3
+info:
+  title: Gym Tracker Routines & Training Flow API
+  version: 0.1.0
+  description: Contrato para rutinas de usuario, flujo guiado de entrenamiento (stepper) y registros por ejercicio.
+servers:
+  - url: http://localhost:5092
+    description: Local development
+security:
+  - bearerAuth: []
+
+tags:
+  - name: Routines
+  - name: Routine Sessions
+  - name: Training Flow
+  - name: Exercise Training Logs
+
+paths:
+  /api/routines:
+    get:
+      tags: [Routines]
+      summary: Listar rutinas del usuario autenticado
+      responses:
+        '200':
+          description: Rutinas del usuario
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/RoutineCard'
+    post:
+      tags: [Routines]
+      summary: Crear rutina
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateRoutineRequest'
+      responses:
+        '201':
+          description: Rutina creada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoutineDetail'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+
+  /api/routines/catalog/availability:
+    get:
+      tags: [Routines]
+      summary: Obtener estado de disponibilidad de catalogo externo para modo degradado
+      responses:
+        '200':
+          description: Estado de disponibilidad
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CatalogAvailabilityResponse'
+
+  /api/routines/{routineId}:
+    patch:
+      tags: [Routines]
+      summary: Actualizar rutina
+      parameters:
+        - $ref: '#/components/parameters/RoutineId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateRoutineRequest'
+      responses:
+        '200':
+          description: Rutina actualizada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoutineDetail'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags: [Routines]
+      summary: Archivar rutina (soft delete)
+      parameters:
+        - $ref: '#/components/parameters/RoutineId'
+      responses:
+        '204':
+          description: Rutina archivada
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/routines/{routineId}/reactivate:
+    post:
+      tags: [Routines]
+      summary: Reactivar rutina archivada
+      parameters:
+        - $ref: '#/components/parameters/RoutineId'
+      responses:
+        '200':
+          description: Rutina reactivada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoutineDetail'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/routines/{routineId}/sessions:
+    post:
+      tags: [Routine Sessions]
+      summary: Crear sesion de rutina
+      parameters:
+        - $ref: '#/components/parameters/RoutineId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSessionRequest'
+      responses:
+        '201':
+          description: Sesion creada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoutineSession'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '409':
+          description: Conflicto de regla de dias por sesion
+
+  /api/routines/{routineId}/sessions/{sessionId}/exercises:
+    get:
+      tags: [Routine Sessions]
+      summary: Obtener ejercicios vinculados de una sesion
+      parameters:
+        - $ref: '#/components/parameters/RoutineId'
+        - $ref: '#/components/parameters/SessionId'
+      responses:
+        '200':
+          description: Listado de ejercicios vinculados a la sesion
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/SessionExercise'
+                  total:
+                    type: integer
+                required: [items, total]
+        '404':
+          $ref: '#/components/responses/NotFound'
+    post:
+      tags: [Routine Sessions]
+      summary: Agregar ejercicio de catalogo a sesion
+      parameters:
+        - $ref: '#/components/parameters/RoutineId'
+        - $ref: '#/components/parameters/SessionId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddSessionExerciseRequest'
+      responses:
+        '201':
+          description: Ejercicio vinculado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionExercise'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/routines/{routineId}/sessions/{sessionId}/exercises/{exerciseId}:
+    delete:
+      tags: [Routine Sessions]
+      summary: Quitar ejercicio de sesion (soft unlink)
+      parameters:
+        - $ref: '#/components/parameters/RoutineId'
+        - $ref: '#/components/parameters/SessionId'
+        - $ref: '#/components/parameters/ExerciseId'
+      responses:
+        '204':
+          description: Ejercicio desvinculado de la sesion
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/training-flow/start:
+    post:
+      tags: [Training Flow]
+      summary: Iniciar entrenamiento y activar bloqueo
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StartTrainingFlowRequest'
+      responses:
+        '200':
+          description: Estado activo del flujo
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrainingFlowState'
+
+  /api/training-flow/cancel:
+    post:
+      tags: [Training Flow]
+      summary: Cancelar entrenamiento y desactivar bloqueo
+      responses:
+        '204':
+          description: Flujo cancelado
+
+  /api/training-flow/active:
+    get:
+      tags: [Training Flow]
+      summary: Obtener estado activo de entrenamiento para restauracion
+      responses:
+        '200':
+          description: Estado activo o nulo
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/TrainingFlowState'
+                  - type: 'null'
+    put:
+      tags: [Training Flow]
+      summary: Persistir avance del stepper en entrenamiento activo
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateTrainingFlowRequest'
+      responses:
+        '200':
+          description: Estado actualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrainingFlowState'
+
+  /api/exercise-training-logs:
+    post:
+      tags: [Exercise Training Logs]
+      summary: Guardar registro de entrenamiento por ejercicio
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateExerciseTrainingLogRequest'
+      responses:
+        '201':
+          description: Registro creado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExerciseTrainingLog'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+
+  /api/exercise-training-logs/{logId}:
+    get:
+      tags: [Exercise Training Logs]
+      summary: Obtener registro por id (solo propietario)
+      parameters:
+        - $ref: '#/components/parameters/LogId'
+      responses:
+        '200':
+          description: Registro encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExerciseTrainingLog'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/exercise-training-logs/progress-comparison:
+    get:
+      tags: [Exercise Training Logs]
+      summary: Obtener comparativas de progreso por ejercicio
+      parameters:
+        - $ref: '#/components/parameters/ExerciseIdQuery'
+      responses:
+        '200':
+          description: Comparativas calculadas contra ultimas referencias
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProgressComparisonResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    RoutineId:
+      name: routineId
+      in: path
+      required: true
+      schema:
+        type: string
+    SessionId:
+      name: sessionId
+      in: path
+      required: true
+      schema:
+        type: string
+    ExerciseId:
+      name: exerciseId
+      in: path
+      required: true
+      schema:
+        type: string
+    ExerciseIdQuery:
+      name: exerciseId
+      in: query
+      required: true
+      schema:
+        type: string
+    LogId:
+      name: logId
+      in: path
+      required: true
+      schema:
+        type: string
+
+  responses:
+    NotFound:
+      description: Recurso no encontrado
+    ValidationError:
+      description: Error de validacion de entrada
+
+  schemas:
+    RoutineCard:
+      type: object
+      required: [id, title, createdAt, exerciseCount, totalSessions, totalExercises]
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        exerciseCount:
+          type: integer
+          minimum: 0
+        totalSessions:
+          type: integer
+          minimum: 0
+        totalExercises:
+          type: integer
+          minimum: 0
+
+    RoutineDetail:
+      allOf:
+        - $ref: '#/components/schemas/RoutineCard'
+        - type: object
+          required: [sessions, isDeleted]
+          properties:
+            goal:
+              type: string
+              nullable: true
+            isDeleted:
+              type: boolean
+            sessions:
+              type: array
+              items:
+                $ref: '#/components/schemas/RoutineSession'
+
+    CreateRoutineRequest:
+      type: object
+      required: [title]
+      properties:
+        title:
+          type: string
+          minLength: 1
+        goal:
+          type: string
+          nullable: true
+
+    UpdateRoutineRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+        goal:
+          type: string
+          nullable: true
+
+    RoutineSession:
+      type: object
+      required: [id, name, daysOfWeek, exercises]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        daysOfWeek:
+          type: array
+          minItems: 1
+          items:
+            type: string
+            enum: [monday, tuesday, wednesday, thursday, friday, saturday, sunday]
+        exercises:
+          type: array
+          items:
+            $ref: '#/components/schemas/SessionExercise'
+
+    AddSessionExerciseRequest:
+      type: object
+      required: [exerciseId]
+      properties:
+        exerciseId:
+          type: string
+
+    SessionExercise:
+      type: object
+      required: [id, exerciseId, name]
+      properties:
+        id:
+          type: string
+        exerciseId:
+          type: string
+        name:
+          type: string
+
+    CreateSessionRequest:
+      type: object
+      required: [name, daysOfWeek]
+      properties:
+        name:
+          type: string
+          minLength: 1
+        daysOfWeek:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items:
+            type: string
+            enum: [monday, tuesday, wednesday, thursday, friday, saturday, sunday]
+
+    StartTrainingFlowRequest:
+      type: object
+      required: [routineId]
+      properties:
+        routineId:
+          type: string
+
+    UpdateTrainingFlowRequest:
+      type: object
+      required: [stepNode]
+      properties:
+        routineId:
+          type: string
+        sessionId:
+          type: string
+          nullable: true
+        exerciseId:
+          type: string
+          nullable: true
+        stepNode:
+          type: string
+          enum: [routine, session, exercise, exerciseData]
+
+    TrainingFlowState:
+      type: object
+      required: [isLocked, routineId, stepNode, lastUpdatedAt]
+      properties:
+        isLocked:
+          type: boolean
+        routineId:
+          type: string
+        sessionId:
+          type: string
+          nullable: true
+        exerciseId:
+          type: string
+          nullable: true
+        stepNode:
+          type: string
+          enum: [routine, session, exercise, exerciseData]
+        lastUpdatedAt:
+          type: string
+          format: date-time
+
+    CreateExerciseTrainingLogRequest:
+      type: object
+      required: [routineId, sessionId, exerciseId, performedSets]
+      properties:
+        routineId:
+          type: string
+        sessionId:
+          type: string
+        exerciseId:
+          type: string
+        performedSets:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/PerformedSet'
+        notes:
+          type: string
+          nullable: true
+        attachments:
+          type: array
+          maxItems: 5
+          items:
+            $ref: '#/components/schemas/TrainingAttachment'
+
+    ExerciseTrainingLog:
+      allOf:
+        - $ref: '#/components/schemas/CreateExerciseTrainingLogRequest'
+        - type: object
+          required: [id, userId, createdAt, updatedAt]
+          properties:
+            id:
+              type: string
+            userId:
+              type: string
+            createdAt:
+              type: string
+              format: date-time
+            updatedAt:
+              type: string
+              format: date-time
+
+    ProgressBaseline:
+      type: object
+      required: [label, volumeTotal, loadTotal, repetitionsTotal]
+      properties:
+        label:
+          type: string
+          enum: [lastSession, averageLast4, bestRecent]
+        volumeTotal:
+          type: number
+        loadTotal:
+          type: number
+        repetitionsTotal:
+          type: integer
+
+    ProgressComparisonResponse:
+      type: object
+      required: [exerciseId, current, baselines, variationPercent, trend]
+      properties:
+        exerciseId:
+          type: string
+        current:
+          $ref: '#/components/schemas/ProgressBaseline'
+        baselines:
+          type: array
+          minItems: 3
+          items:
+            $ref: '#/components/schemas/ProgressBaseline'
+        variationPercent:
+          type: number
+        trend:
+          type: string
+          enum: [improves, stable, declines]
+
+    CatalogAvailabilityResponse:
+      type: object
+      required: [isStale, lastUpdatedAt]
+      properties:
+        isStale:
+          type: boolean
+        lastUpdatedAt:
+          type: string
+          format: date-time
+
+    PerformedSet:
+      type: object
+      required: [repetitions, weightKg, order]
+      properties:
+        repetitions:
+          type: integer
+          minimum: 1
+        weightKg:
+          type: number
+          exclusiveMinimum: 0
+        order:
+          type: integer
+          minimum: 1
+
+    TrainingAttachment:
+      type: object
+      required: [type, url]
+      properties:
+        type:
+          type: string
+          enum: [photo, video]
+        url:
+          type: string
+          format: uri

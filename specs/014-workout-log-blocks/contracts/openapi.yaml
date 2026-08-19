@@ -1,0 +1,258 @@
+openapi: 3.0.3
+info:
+  title: Gym Tracker - Training Sessions (Feature 014)
+  version: 1.0.0
+  description: >
+    Contrato de los endpoints nuevos del modulo TrainingSessions (registro de
+    entrenamiento por bloques en el Plan Mensual). Este documento describe
+    unicamente los endpoints introducidos por la feature 014-workout-log-blocks;
+    durante la implementacion se integran en el contrato oficial
+    `src/backend/src/GymTracker.Api/Contracts/openapi.yaml`.
+servers:
+  - url: http://localhost:5000
+    description: Local development
+security:
+  - bearerAuth: []
+paths:
+  /api/trainingsessions:
+    post:
+      summary: Guardar una sesion de entrenamiento (resumen + bloques + notas)
+      tags: [Training Sessions]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTrainingSessionRequest'
+      responses:
+        '201':
+          description: Sesion creada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrainingSessionResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /api/trainingsessions/{id}:
+    get:
+      summary: Obtener una sesion de entrenamiento por id
+      tags: [Training Sessions]
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: Sesion encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrainingSessionResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/trainingsessions/week/{weekNumber}/day/{dayNumber}/exercise/{exerciseId}/history:
+    get:
+      summary: Listar historial de sesiones de un ejercicio planificado (mas reciente primero)
+      tags: [Training Sessions]
+      parameters:
+        - name: weekNumber
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1, maximum: 4 }
+        - name: dayNumber
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1, maximum: 7 }
+        - name: exerciseId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: >
+            Lista de sesiones del ejercicio planificado, ordenadas de mas reciente
+            a mas antigua. Devuelve `[]` si no hay sesiones guardadas (FR-017).
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TrainingSessionResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /api/trainingsessions/block-templates/{exerciseType}:
+    get:
+      summary: Obtener la plantilla de bloques por defecto para un tipo de ejercicio
+      tags: [Training Sessions]
+      description: >
+        Contenido estatico de referencia (INT-004), indexado por el perfil
+        (fuerza/cardio) derivado de `exerciseType`. No requiere autenticacion
+        adicional a la del resto de la API.
+      parameters:
+        - name: exerciseType
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/ExerciseType'
+      responses:
+        '200':
+          description: Plantilla de bloques por defecto para el perfil correspondiente
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/BlockTemplateItem'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    Id:
+      name: id
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+  responses:
+    BadRequest:
+      description: Validacion de entrada fallida
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Unauthorized:
+      description: No autenticado
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    NotFound:
+      description: Recurso no encontrado
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+  schemas:
+    ErrorResponse:
+      type: object
+      required: [message]
+      properties:
+        message:
+          type: string
+    ExerciseType:
+      type: string
+      enum:
+        - STRENGTH
+        - BODYWEIGHT
+        - CARDIO
+        - MOBILITY
+        - STRETCHING
+        - PLYOMETRIC
+        - SPORTS
+        - REHABILITATION
+    SessionBlockType:
+      type: string
+      enum:
+        - WARMUP
+        - APPROACH
+        - WORK
+        - REST_STRENGTH
+        - SWIM
+        - SERIES
+        - TECHNIQUE
+        - REST_CARDIO
+    CreateTrainingSessionRequest:
+      type: object
+      required:
+        - weekNumber
+        - dayNumber
+        - exerciseId
+        - durationMinutes
+        - secondaryMetricValue
+        - secondaryMetricUnitCode
+        - tertiaryMetricValue
+        - blocks
+      properties:
+        weekNumber: { type: integer, minimum: 1, maximum: 4 }
+        dayNumber: { type: integer, minimum: 1, maximum: 7 }
+        exerciseId: { type: string, format: uuid }
+        durationMinutes: { type: number, format: decimal, minimum: 0 }
+        secondaryMetricValue: { type: number, format: decimal, minimum: 0 }
+        secondaryMetricUnitCode: { type: string }
+        tertiaryMetricValue: { type: number, format: decimal, minimum: 0 }
+        notes:
+          type: string
+          maxLength: 150
+          nullable: true
+        blocks:
+          type: array
+          items:
+            $ref: '#/components/schemas/CreateSessionBlockRequest'
+    CreateSessionBlockRequest:
+      type: object
+      required: [blockType, name, durationValue, durationUnitCode, orderIndex]
+      properties:
+        blockType:
+          $ref: '#/components/schemas/SessionBlockType'
+        name: { type: string, minLength: 1 }
+        durationValue: { type: number, format: decimal, exclusiveMinimum: true, minimum: 0 }
+        durationUnitCode: { type: string }
+        description:
+          type: string
+          maxLength: 100
+          nullable: true
+        intensityRpe:
+          type: integer
+          minimum: 1
+          maximum: 10
+          nullable: true
+        orderIndex: { type: integer, minimum: 0 }
+    TrainingSessionResponse:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        weekNumber: { type: integer }
+        dayNumber: { type: integer }
+        exerciseId: { type: string, format: uuid }
+        timestamp: { type: string, format: date-time }
+        durationMinutes: { type: number, format: decimal }
+        secondaryMetricValue: { type: number, format: decimal }
+        secondaryMetricUnitCode: { type: string }
+        tertiaryMetricValue: { type: number, format: decimal }
+        notes:
+          type: string
+          nullable: true
+        blocks:
+          type: array
+          items:
+            $ref: '#/components/schemas/SessionBlockResponse'
+    SessionBlockResponse:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        blockType:
+          $ref: '#/components/schemas/SessionBlockType'
+        name: { type: string }
+        durationValue: { type: number, format: decimal }
+        durationUnitCode: { type: string }
+        description:
+          type: string
+          nullable: true
+        intensityRpe:
+          type: integer
+          nullable: true
+        orderIndex: { type: integer }
+    BlockTemplateItem:
+      type: object
+      properties:
+        blockType:
+          $ref: '#/components/schemas/SessionBlockType'
+        name: { type: string }
+        defaultDurationMinutes: { type: number, format: decimal }
+        orderIndex: { type: integer }

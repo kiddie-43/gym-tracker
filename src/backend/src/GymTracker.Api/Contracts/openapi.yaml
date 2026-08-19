@@ -1,0 +1,989 @@
+openapi: 3.0.3
+info:
+  title: Gym Tracker Admin Catalogs API
+  version: 0.1.0
+  description: Contrato para panel de administracion de musculos, mediciones y ejercicios.
+servers:
+  - url: http://localhost:5000
+    description: Local development
+security:
+  - bearerAuth: []
+paths:
+  /api/admin/muscles:
+    get:
+      summary: Listar musculos
+      tags: [Admin Muscles]
+      parameters:
+        - $ref: '#/components/parameters/IncludeDeleted'
+        - $ref: '#/components/parameters/Search'
+        - $ref: '#/components/parameters/Code'
+        - $ref: '#/components/parameters/Name'
+        - $ref: '#/components/parameters/MusclesSortBy'
+        - $ref: '#/components/parameters/SortDirection'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: Lista paginada de musculos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MusclesPage'
+    post:
+      summary: Crear musculo
+      tags: [Admin Muscles]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpsertMuscleRequest'
+      responses:
+        '201':
+          description: Musculo creado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Muscle'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /api/admin/muscles/{id}:
+    get:
+      summary: Obtener musculo por id
+      tags: [Admin Muscles]
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: Musculo encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Muscle'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      summary: Actualizar musculo
+      tags: [Admin Muscles]
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpsertMuscleRequest'
+      responses:
+        '200':
+          description: Musculo actualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Muscle'
+        '409':
+          $ref: '#/components/responses/Conflict'
+    delete:
+      summary: Soft delete de musculo
+      tags: [Admin Muscles]
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '204':
+          description: Musculo borrado logicamente
+  /api/admin/muscles/{id}/reactivate:
+    post:
+      summary: Reactivar musculo borrado
+      tags: [Admin Muscles]
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: Musculo reactivado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Muscle'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /api/admin/muscles/import-csv:
+    post:
+      summary: Importar musculos por lote CSV parseado
+      tags: [Admin Muscles]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ImportMusclesRequest'
+      responses:
+        '200':
+          description: Resultado de importacion parcial
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportMusclesResult'
+
+  /api/admin/measurement-types:
+    get:
+      summary: Listar mediciones
+      tags: [Admin Measurement Types]
+      parameters:
+        - $ref: '#/components/parameters/IncludeInactive'
+        - $ref: '#/components/parameters/Search'
+        - $ref: '#/components/parameters/Code'
+        - $ref: '#/components/parameters/SortBy'
+        - $ref: '#/components/parameters/SortDirection'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: Lista paginada de mediciones
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeasurementTypesPage'
+    post:
+      summary: Crear medicion
+      tags: [Admin Measurement Types]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpsertMeasurementTypeRequest'
+      responses:
+        '201':
+          description: Medicion creada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeasurementType'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /api/admin/measurement-types/{id}:
+    get:
+      summary: Obtener medicion por id
+      tags: [Admin Measurement Types]
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: Medicion encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeasurementType'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      summary: Actualizar medicion
+      tags: [Admin Measurement Types]
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpsertMeasurementTypeRequest'
+      responses:
+        '200':
+          description: Medicion actualizada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeasurementType'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+    delete:
+      summary: Soft delete de medicion
+      tags: [Admin Measurement Types]
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '204':
+          description: Medicion borrada logicamente
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/admin/measurement-types/{id}/reactivate:
+    post:
+      summary: Reactivar medicion
+      tags: [Admin Measurement Types]
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: Medicion reactivada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeasurementType'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /api/admin/measurement-types/import-csv:
+    post:
+      summary: Importar mediciones por CSV parseado
+      tags: [Admin Measurement Types]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ImportMeasurementTypesRequest'
+      responses:
+        '200':
+          description: Resultado de importacion parcial
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportMeasurementTypesResult'
+
+  /api/admin/measurement-types/assignable:
+    get:
+      summary: Listar mediciones activas asignables a ejercicios
+      tags: [Admin Measurement Types]
+      responses:
+        '200':
+          description: Lista de mediciones activas asignables
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AssignableMeasurementType'
+
+  /api/admin/exercises:
+    get:
+      summary: Listar ejercicios
+      tags: [Admin Exercises]
+      parameters:
+        - $ref: '#/components/parameters/IncludeDeleted'
+        - $ref: '#/components/parameters/Search'
+        - $ref: '#/components/parameters/ExercisesSortBy'
+        - $ref: '#/components/parameters/SortDirection'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: Lista paginada de ejercicios
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExercisesPage'
+    post:
+      summary: Crear ejercicio
+      tags: [Admin Exercises]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpsertExerciseRequest'
+      responses:
+        '201':
+          description: Ejercicio creado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Exercise'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /api/admin/exercises/{id}:
+    get:
+      summary: Obtener ejercicio por id
+      tags: [Admin Exercises]
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: Ejercicio encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Exercise'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      summary: Actualizar ejercicio
+      tags: [Admin Exercises]
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpsertExerciseRequest'
+      responses:
+        '200':
+          description: Ejercicio actualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Exercise'
+        '409':
+          $ref: '#/components/responses/Conflict'
+    delete:
+      summary: Soft delete de ejercicio
+      tags: [Admin Exercises]
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '204':
+          description: Ejercicio borrado logicamente
+  /api/admin/exercises/{id}/reactivate:
+    post:
+      summary: Reactivar ejercicio
+      tags: [Admin Exercises]
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: Ejercicio reactivado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Exercise'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /api/admin/exercises/import-csv:
+    post:
+      summary: Importar ejercicios por CSV parseado
+      tags: [Admin Exercises]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ImportExercisesRequest'
+      responses:
+        '200':
+          description: Resultado de importacion parcial por fila
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportExercisesResult'
+
+  /api/trainingsessions:
+    post:
+      summary: Guardar una sesion de entrenamiento (resumen + bloques + notas)
+      tags: [Training Sessions]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTrainingSessionRequest'
+      responses:
+        '201':
+          description: Sesion creada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrainingSessionResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /api/trainingsessions/{id}:
+    get:
+      summary: Obtener una sesion de entrenamiento por id
+      tags: [Training Sessions]
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: Sesion encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrainingSessionResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/trainingsessions/week/{weekNumber}/day/{dayNumber}/exercise/{exerciseId}/history:
+    get:
+      summary: Listar historial de sesiones de un ejercicio planificado (mas reciente primero)
+      tags: [Training Sessions]
+      parameters:
+        - name: weekNumber
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1, maximum: 4 }
+        - name: dayNumber
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1, maximum: 7 }
+        - name: exerciseId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: >
+            Lista de sesiones del ejercicio planificado, ordenadas de mas reciente
+            a mas antigua. Devuelve `[]` si no hay sesiones guardadas.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TrainingSessionResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /api/trainingsessions/block-templates/{exerciseType}:
+    get:
+      summary: Obtener la plantilla de bloques por defecto para un tipo de ejercicio (perfil fuerza o cardio)
+      tags: [Training Sessions]
+      parameters:
+        - name: exerciseType
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Plantilla de bloques del perfil correspondiente
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/BlockTemplateItemResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+
+components:
+  parameters:
+    Id:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+    IncludeInactive:
+      name: includeInactive
+      in: query
+      required: false
+      schema:
+        type: boolean
+        default: false
+    IncludeDeleted:
+      name: includeDeleted
+      in: query
+      required: false
+      schema:
+        type: boolean
+        default: false
+    Search:
+      name: search
+      in: query
+      required: false
+      schema:
+        type: string
+    Code:
+      name: code
+      in: query
+      required: false
+      schema:
+        type: string
+    Name:
+      name: name
+      in: query
+      required: false
+      schema:
+        type: string
+    MusclesSortBy:
+      name: sortBy
+      in: query
+      required: false
+      schema:
+        type: string
+        enum: [name, code, description]
+        default: name
+    ExercisesSortBy:
+      name: sortBy
+      in: query
+      required: false
+      schema:
+        type: string
+        enum: [code, name, category, difficulty]
+        default: name
+    SortBy:
+      name: sortBy
+      in: query
+      required: false
+      schema:
+        type: string
+        enum: [name, category, key, code, description]
+        default: name
+    SortDirection:
+      name: sortDirection
+      in: query
+      required: false
+      schema:
+        type: string
+        enum: [asc, desc]
+        default: asc
+    Page:
+      name: page
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+    PageSize:
+      name: pageSize
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 10
+
+  responses:
+    Conflict:
+      description: Conflicto de unicidad o regla de negocio
+    NotFound:
+      description: Recurso no encontrado
+    ValidationError:
+      description: Error de validacion de datos de entrada
+    Unauthorized:
+      description: No autenticado
+
+  schemas:
+    Muscle:
+      type: object
+      required: [id, code]
+      properties:
+        id: { type: string }
+        code: { type: string }
+        description: { type: string, nullable: true }
+        deletedAt: { type: string, format: date-time, nullable: true }
+    MusclesPage:
+      type: object
+      required: [items, totalCount, page, pageSize]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Muscle'
+        totalCount:
+          type: integer
+          minimum: 0
+        page:
+          type: integer
+          minimum: 1
+        pageSize:
+          type: integer
+          minimum: 1
+    MeasurementType:
+      type: object
+      required: [id, key, name, unit, dataType, category, active, isDeleted, createdAt, updatedAt]
+      properties:
+        id: { type: string }
+        key: { type: string }
+        name: { type: string }
+        unit: { type: string }
+        dataType:
+          type: string
+          enum: [integer, decimal, time, boolean, text]
+        category:
+          type: string
+          enum: [strength, cardio, mobility, general]
+        description: { type: string, nullable: true }
+        active: { type: boolean }
+        isDeleted: { type: boolean }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        deletedAt: { type: string, format: date-time, nullable: true }
+    MeasurementTypesPage:
+      type: object
+      required: [items, totalCount, page, pageSize]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/MeasurementType'
+        totalCount:
+          type: integer
+          minimum: 0
+        page:
+          type: integer
+          minimum: 1
+        pageSize:
+          type: integer
+          minimum: 1
+    AssignableMeasurementType:
+      type: object
+      required: [id, key, name, unit, dataType, category]
+      properties:
+        id: { type: string }
+        key: { type: string }
+        name: { type: string }
+        unit: { type: string }
+        dataType:
+          type: string
+          enum: [integer, decimal, time, boolean, text]
+        category:
+          type: string
+          enum: [strength, cardio, mobility, general]
+    Exercise:
+      type: object
+      required: [id, code, name, difficulty, category, primaryMuscleIds, measurementTypeId]
+      properties:
+        id: { type: string }
+        code: { type: string }
+        name: { type: string }
+        description: { type: string, nullable: true }
+        difficulty:
+          type: string
+          enum: [Beginner, Intermediate, Advanced]
+        category:
+          type: string
+          enum: [Strength, Cardio, Mobility, Stretching]
+        primaryMuscleIds:
+          type: array
+          items: { type: string }
+        secondaryMuscleIds:
+          type: array
+          items: { type: string }
+        measurementTypeId: { type: string }
+        images:
+          type: array
+          items: { type: string }
+        videos:
+          type: array
+          items: { type: string }
+        deletedAt: { type: string, format: date-time, nullable: true }
+
+    ExercisesPage:
+      type: object
+      required: [items, totalCount, page, pageSize]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Exercise'
+        totalCount:
+          type: integer
+          minimum: 0
+        page:
+          type: integer
+          minimum: 1
+        pageSize:
+          type: integer
+          minimum: 1
+
+    UpsertMuscleRequest:
+      type: object
+      required: [code]
+      properties:
+        code: { type: string }
+        description: { type: string, nullable: true }
+
+    UpsertMeasurementTypeRequest:
+      type: object
+      required: [key, name, unit, dataType, category]
+      properties:
+        key: { type: string }
+        name: { type: string }
+        unit: { type: string }
+        dataType:
+          type: string
+          enum: [integer, decimal, time, boolean, text]
+        category:
+          type: string
+          enum: [strength, cardio, mobility, general]
+        description: { type: string, nullable: true }
+
+    UpsertExerciseRequest:
+      type: object
+      required: [code, name, primaryMuscleIds]
+      description: |
+        Canonical request uses category, difficulty and measurementTypeId.
+        For backward compatibility, exerciseTypeId/exerciseTypeCode and formTypeId/formTypeCode are also accepted.
+      anyOf:
+        - required: [category, difficulty]
+        - required: [exerciseTypeId, exerciseTypeCode]
+      oneOf:
+        - required: [measurementTypeId]
+        - required: [formTypeId]
+      properties:
+        code: { type: string }
+        name: { type: string }
+        description: { type: string, nullable: true }
+        difficulty:
+          type: string
+          enum: [Beginner, Intermediate, Advanced]
+        category:
+          type: string
+          enum: [Strength, Cardio, Mobility, Stretching]
+        primaryMuscleIds:
+          type: array
+          minItems: 1
+          items: { type: string }
+        secondaryMuscleIds:
+          type: array
+          items: { type: string }
+        measurementTypeId: { type: string }
+        exerciseTypeId: { type: string }
+        exerciseTypeCode: { type: string }
+        formTypeId: { type: string }
+        formTypeCode: { type: string }
+        images:
+          type: array
+          items: { type: string }
+        videos:
+          type: array
+          items: { type: string }
+
+    ImportMusclesRequest:
+      type: object
+      required: [rows]
+      properties:
+        rows:
+          type: array
+          items:
+            type: object
+            properties:
+              name: { type: string }
+              code: { type: string }
+              description: { type: string, nullable: true }
+
+    ImportMusclesResult:
+      type: object
+      required: [totalRows, importedRows, rejectedRows, results]
+      properties:
+        totalRows: { type: integer }
+        importedRows: { type: integer }
+        rejectedRows: { type: integer }
+        results:
+          type: array
+          items:
+            type: object
+            required: [rowNumber, status]
+            properties:
+              rowNumber: { type: integer }
+              code: { type: string }
+              status:
+                type: string
+                enum: [Imported, Rejected]
+              reason: { type: string, nullable: true }
+
+    ImportMeasurementTypesRequest:
+      type: object
+      required: [rows]
+      properties:
+        rows:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/ImportMeasurementTypeRow'
+
+    ImportMeasurementTypeRow:
+      type: object
+      required: [key, name, unit, dataType, category]
+      properties:
+        key: { type: string }
+        name: { type: string }
+        unit: { type: string }
+        dataType: { type: string }
+        category: { type: string }
+        description: { type: string, nullable: true }
+
+    ImportMeasurementTypesResult:
+      type: object
+      required: [totalRows, createdRows, rejectedRows, rows]
+      properties:
+        totalRows: { type: integer, minimum: 0 }
+        createdRows: { type: integer, minimum: 0 }
+        rejectedRows: { type: integer, minimum: 0 }
+        rows:
+          type: array
+          items:
+            $ref: '#/components/schemas/ImportMeasurementTypeRowResult'
+
+    ImportExercisesRequest:
+      type: object
+      required: [rows]
+      properties:
+        rows:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/ImportExerciseRow'
+
+    ImportExerciseRow:
+      type: object
+      properties:
+        code: { type: string }
+        name: { type: string }
+        description: { type: string, nullable: true }
+        category: { type: string }
+        difficulty: { type: string }
+        measurementTypeId: { type: string }
+        formTypeId: { type: string }
+        formTypeCode: { type: string }
+        primaryMuscleIds:
+          type: array
+          items: { type: string }
+        secondaryMuscleIds:
+          type: array
+          items: { type: string }
+
+    ImportExercisesResult:
+      type: object
+      required: [totalRows, createdRows, rejectedRows, rows]
+      properties:
+        totalRows: { type: integer }
+        createdRows: { type: integer }
+        rejectedRows: { type: integer }
+        rows:
+          type: array
+          items:
+            $ref: '#/components/schemas/ImportExerciseRowResult'
+
+    ImportExerciseRowResult:
+      type: object
+      required: [rowNumber, created]
+      properties:
+        rowNumber: { type: integer }
+        code: { type: string }
+        created: { type: boolean }
+        reason: { type: string, nullable: true }
+        exercise:
+          allOf:
+            - $ref: '#/components/schemas/Exercise'
+          nullable: true
+
+    ImportMeasurementTypeRowResult:
+      type: object
+      required: [rowNumber, created]
+      properties:
+        rowNumber: { type: integer, minimum: 1 }
+        key: { type: string, nullable: true }
+        created: { type: boolean }
+        reason: { type: string, nullable: true }
+        measurementType:
+          oneOf:
+            - $ref: '#/components/schemas/MeasurementType'
+            - type: 'null'
+
+    SessionBlockType:
+      type: string
+      enum:
+        - WARMUP
+        - APPROACH
+        - WORK
+        - REST_STRENGTH
+        - SWIM
+        - SERIES
+        - TECHNIQUE
+        - REST_CARDIO
+    CreateTrainingSessionRequest:
+      type: object
+      required:
+        - weekNumber
+        - dayNumber
+        - exerciseId
+        - durationMinutes
+        - secondaryMetricValue
+        - secondaryMetricUnitCode
+        - tertiaryMetricValue
+        - blocks
+      properties:
+        weekNumber: { type: integer, minimum: 1, maximum: 4 }
+        dayNumber: { type: integer, minimum: 1, maximum: 7 }
+        exerciseId: { type: string, format: uuid }
+        durationMinutes: { type: number, format: decimal, minimum: 0 }
+        secondaryMetricValue: { type: number, format: decimal, minimum: 0 }
+        secondaryMetricUnitCode: { type: string }
+        tertiaryMetricValue: { type: number, format: decimal, minimum: 0 }
+        notes:
+          type: string
+          maxLength: 150
+          nullable: true
+        blocks:
+          type: array
+          items:
+            $ref: '#/components/schemas/CreateSessionBlockRequest'
+    CreateSessionBlockRequest:
+      type: object
+      required: [blockType, name, durationValue, durationUnitCode, orderIndex]
+      properties:
+        blockType:
+          $ref: '#/components/schemas/SessionBlockType'
+        name: { type: string, minLength: 1 }
+        durationValue: { type: number, format: decimal, exclusiveMinimum: true, minimum: 0 }
+        durationUnitCode: { type: string }
+        description:
+          type: string
+          maxLength: 100
+          nullable: true
+        intensityRpe:
+          type: integer
+          minimum: 1
+          maximum: 10
+          nullable: true
+        orderIndex: { type: integer, minimum: 0 }
+    TrainingSessionResponse:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        weekNumber: { type: integer }
+        dayNumber: { type: integer }
+        exerciseId: { type: string, format: uuid }
+        timestamp: { type: string, format: date-time }
+        durationMinutes: { type: number, format: decimal }
+        secondaryMetricValue: { type: number, format: decimal }
+        secondaryMetricUnitCode: { type: string }
+        tertiaryMetricValue: { type: number, format: decimal }
+        notes:
+          type: string
+          nullable: true
+        blocks:
+          type: array
+          items:
+            $ref: '#/components/schemas/SessionBlockResponse'
+    SessionBlockResponse:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        blockType:
+          $ref: '#/components/schemas/SessionBlockType'
+        name: { type: string }
+        durationValue: { type: number, format: decimal }
+        durationUnitCode: { type: string }
+        description:
+          type: string
+          nullable: true
+        intensityRpe:
+          type: integer
+          nullable: true
+        orderIndex: { type: integer }
+    BlockTemplateItemResponse:
+      type: object
+      properties:
+        blockType:
+          $ref: '#/components/schemas/SessionBlockType'
+        name: { type: string }
+        defaultDurationMinutes: { type: number, format: decimal }
+        orderIndex: { type: integer }
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

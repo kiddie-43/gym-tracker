@@ -1,0 +1,657 @@
+openapi: 3.0.3
+info:
+  title: Gym Tracker Training Metric Logs API
+  version: 2.0.0
+  description: Contrato v2.0.0 para logs metricos dinamicos agrupados por idGrupo. `/api/training-metric-logs/*` es la unica superficie soportada; la migracion desde el flujo legacy debe completarse antes del despliegue de esta version y no existe ventana de compatibilidad dentro del mismo despliegue.
+  x-legacy-migration:
+    replacedFlow: exercise logs legacy
+    replacedBy: /api/training-metric-logs/*
+    deprecationStatus: deprecated
+    compatibilityWindow: none
+    sunsetTrigger: deployment of contract version 2.0.0
+    sunsetPolicy: legacy flow is unsupported once version 2.0.0 is deployed
+servers:
+  - url: http://localhost:5092
+    description: Local development
+security:
+  - bearerAuth: []
+
+tags:
+  - name: Training Metric Logs
+  - name: Training Metrics Catalog
+
+paths:
+  /health:
+    get:
+      tags: [Training Metric Logs]
+      summary: Health check del modulo y sus dependencias criticas
+      security: []
+      responses:
+        '200':
+          description: Dependencias listas o degradadas segun politica de health checks.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthCheckResponse'
+              examples:
+                healthy:
+                  value:
+                    status: Healthy
+                    entries:
+                      training-metric-logs-dependencies:
+                        status: Healthy
+                        description: Training metric logs dependencies are available.
+                        duration: 12.4
+                        data: {}
+        '503':
+          description: Dependencias criticas no disponibles.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthCheckResponse'
+              examples:
+                unhealthy:
+                  value:
+                    status: Unhealthy
+                    entries:
+                      training-metric-logs-dependencies:
+                        status: Unhealthy
+                        description: Training metric logs SQL tables are unavailable.
+                        duration: 3.1
+                        data: {}
+
+  /api/training-metric-logs/metrics:
+    get:
+      tags: [Training Metrics Catalog]
+      summary: Obtener metricas disponibles para captura dinamica
+      parameters:
+        - in: query
+          name: exerciseId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Metricas habilitadas para ejercicio
+          headers:
+            X-Metric-Definitions-Status:
+              schema:
+                type: string
+              description: Valor `degraded` cuando no se pudieron resolver definiciones y se devuelve lista vacia.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MetricDefinition'
+              examples:
+                success:
+                  value:
+                    - metricId: weight
+                      name: Peso
+                      dataType: decimal
+                      unit: kg
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /api/training-metric-logs/current-day:
+    get:
+      tags: [Training Metric Logs]
+      summary: Obtener logs vigentes del dia actual por contexto
+      description: Devuelve el grupo vigente para la fecha actual del contexto solicitado. Si existen varios grupos en el mismo dia, se selecciona el ultimo creado segun `createdAt`. Si no hay datos, devuelve `[]`.
+      parameters:
+        - $ref: '#/components/parameters/RoutineIdRequired'
+        - $ref: '#/components/parameters/SessionIdRequired'
+        - $ref: '#/components/parameters/TrainingIdRequired'
+        - in: query
+          name: exerciseId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Lista de logs del dia; vacia si no hay datos
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TrainingMetricLog'
+              examples:
+                latest-group:
+                  value:
+                    - logId: log-001
+                      userId: user-123
+                      routineId: routine-1
+                      sessionId: session-1
+                      trainingId: training-1
+                      exerciseId: exercise-1
+                      metricId: weight
+                      groupId: group-20260529-a
+                      date: '2026-05-29'
+                      value: 80.5
+                      createdAt: '2026-05-29T10:15:00Z'
+                      updatedAt: '2026-05-29T10:15:00Z'
+                empty:
+                  value: []
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /api/training-metric-logs:
+    get:
+      tags: [Training Metric Logs]
+      summary: Listar logs metricos paginados y filtrados por contexto
+      parameters:
+        - $ref: '#/components/parameters/RoutineIdOptional'
+        - $ref: '#/components/parameters/SessionIdOptional'
+        - $ref: '#/components/parameters/TrainingIdOptional'
+        - in: query
+          name: exerciseId
+          required: false
+          schema:
+            type: string
+        - in: query
+          name: metricId
+          required: false
+          schema:
+            type: string
+        - in: query
+          name: page
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - in: query
+          name: pageSize
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        '200':
+          description: Listado paginado de logs metricos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrainingMetricLogsPageResponse'
+              examples:
+                paged:
+                  value:
+                    items:
+                      - logId: log-001
+                        userId: user-123
+                        routineId: routine-1
+                        sessionId: session-1
+                        trainingId: training-1
+                        exerciseId: exercise-1
+                        metricId: weight
+                        groupId: group-20260529-a
+                        date: '2026-05-29'
+                        value: 80.5
+                        createdAt: '2026-05-29T10:15:00Z'
+                        updatedAt: '2026-05-29T10:16:00Z'
+                    total: 1
+                    page: 0
+                    pageSize: 20
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      tags: [Training Metric Logs]
+      summary: Crear captura metrica agrupada por set
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTrainingMetricGroupRequest'
+            examples:
+              create-group:
+                value:
+                  routineId: routine-1
+                  sessionId: session-1
+                  trainingId: training-1
+                  exerciseId: exercise-1
+                  date: '2026-05-29'
+                  metrics:
+                    - metricId: weight
+                      value: 80.5
+                    - metricId: reps
+                      value: 8
+      responses:
+        '201':
+          description: Grupo creado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrainingMetricGroupResponse'
+              examples:
+                created:
+                  value:
+                    groupId: group-20260529-a
+                    items:
+                      - logId: log-001
+                        userId: user-123
+                        routineId: routine-1
+                        sessionId: session-1
+                        trainingId: training-1
+                        exerciseId: exercise-1
+                        metricId: weight
+                        groupId: group-20260529-a
+                        date: '2026-05-29'
+                        value: 80.5
+                        createdAt: '2026-05-29T10:15:00Z'
+                        updatedAt: '2026-05-29T10:15:00Z'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '409':
+          description: Grupo duplicado en mismo contexto/fecha
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /api/training-metric-logs/groups/{groupId}:
+    get:
+      tags: [Training Metric Logs]
+      summary: Obtener detalle de un grupo por id
+      parameters:
+        - $ref: '#/components/parameters/GroupId'
+      responses:
+        '200':
+          description: Grupo de metricas
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrainingMetricGroupResponse'
+              examples:
+                group:
+                  value:
+                    groupId: group-20260529-a
+                    items:
+                      - logId: log-001
+                        userId: user-123
+                        routineId: routine-1
+                        sessionId: session-1
+                        trainingId: training-1
+                        exerciseId: exercise-1
+                        metricId: weight
+                        groupId: group-20260529-a
+                        date: '2026-05-29'
+                        value: 80.5
+                        createdAt: '2026-05-29T10:15:00Z'
+                        updatedAt: '2026-05-29T10:16:00Z'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    delete:
+      tags: [Training Metric Logs]
+      summary: Borrado logico del grupo completo
+      parameters:
+        - $ref: '#/components/parameters/GroupId'
+      responses:
+        '204':
+          description: Grupo eliminado logicamente
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /api/training-metric-logs/groups/{groupId}/metrics/{metricId}:
+    patch:
+      tags: [Training Metric Logs]
+      summary: Editar solo valorMetrica dentro del grupo
+      parameters:
+        - $ref: '#/components/parameters/GroupId'
+        - $ref: '#/components/parameters/MetricId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateMetricValueRequest'
+            examples:
+              update-value:
+                value:
+                  value: 82.0
+      responses:
+        '200':
+          description: Valor actualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrainingMetricLog'
+              examples:
+                updated:
+                  value:
+                    logId: log-001
+                    userId: user-123
+                    routineId: routine-1
+                    sessionId: session-1
+                    trainingId: training-1
+                    exerciseId: exercise-1
+                    metricId: weight
+                    groupId: group-20260529-a
+                    date: '2026-05-29'
+                    value: 82.0
+                    createdAt: '2026-05-29T10:15:00Z'
+                    updatedAt: '2026-05-29T10:20:00Z'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    GroupId:
+      in: path
+      name: groupId
+      required: true
+      schema:
+        type: string
+    MetricId:
+      in: path
+      name: metricId
+      required: true
+      schema:
+        type: string
+    RoutineIdRequired:
+      in: query
+      name: routineId
+      required: true
+      schema:
+        type: string
+    SessionIdRequired:
+      in: query
+      name: sessionId
+      required: true
+      schema:
+        type: string
+    TrainingIdRequired:
+      in: query
+      name: trainingId
+      required: true
+      schema:
+        type: string
+    RoutineIdOptional:
+      in: query
+      name: routineId
+      required: false
+      schema:
+        type: string
+    SessionIdOptional:
+      in: query
+      name: sessionId
+      required: false
+      schema:
+        type: string
+    TrainingIdOptional:
+      in: query
+      name: trainingId
+      required: false
+      schema:
+        type: string
+
+  responses:
+    ValidationError:
+      description: Error de validacion
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Unauthorized:
+      description: Usuario no autenticado
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Forbidden:
+      description: Usuario autenticado sin permisos suficientes
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    NotFound:
+      description: Recurso no encontrado
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+  schemas:
+    ErrorResponse:
+      type: object
+      properties:
+        message:
+          type: string
+      required: [message]
+      example:
+        message: Validation error.
+
+    MetricDefinition:
+      type: object
+      properties:
+        metricId:
+          type: string
+        name:
+          type: string
+        dataType:
+          type: string
+        unit:
+          type: string
+      required: [metricId, name, dataType]
+      example:
+        metricId: weight
+        name: Peso
+        dataType: decimal
+        unit: kg
+
+    TrainingMetricLog:
+      type: object
+      properties:
+        logId:
+          type: string
+        userId:
+          type: string
+        routineId:
+          type: string
+        sessionId:
+          type: string
+        trainingId:
+          type: string
+        exerciseId:
+          type: string
+        metricId:
+          type: string
+        groupId:
+          type: string
+        date:
+          type: string
+          format: date
+          description: Fecha operativa de captura usada para la resolucion diaria del grupo.
+        value:
+          type: number
+          format: double
+        createdAt:
+          type: string
+          format: date-time
+          description: Timestamp UTC completo del alta del registro.
+        updatedAt:
+          type: string
+          format: date-time
+          description: Timestamp UTC completo de la ultima mutacion permitida del valor.
+      required: [logId, userId, routineId, sessionId, trainingId, exerciseId, metricId, groupId, date, value, createdAt, updatedAt]
+      example:
+        logId: log-001
+        userId: user-123
+        routineId: routine-1
+        sessionId: session-1
+        trainingId: training-1
+        exerciseId: exercise-1
+        metricId: weight
+        groupId: group-20260529-a
+        date: '2026-05-29'
+        value: 80.5
+        createdAt: '2026-05-29T10:15:00Z'
+        updatedAt: '2026-05-29T10:16:00Z'
+
+    TrainingMetricLogsPageResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/TrainingMetricLog'
+        total:
+          type: integer
+        page:
+          type: integer
+        pageSize:
+          type: integer
+      required: [items, total, page, pageSize]
+      example:
+        items:
+          - logId: log-001
+            userId: user-123
+            routineId: routine-1
+            sessionId: session-1
+            trainingId: training-1
+            exerciseId: exercise-1
+            metricId: weight
+            groupId: group-20260529-a
+            date: '2026-05-29'
+            value: 80.5
+            createdAt: '2026-05-29T10:15:00Z'
+            updatedAt: '2026-05-29T10:16:00Z'
+        total: 1
+        page: 0
+        pageSize: 20
+
+    GroupMetricValueInput:
+      type: object
+      properties:
+        metricId:
+          type: string
+        value:
+          type: number
+          format: double
+      required: [metricId, value]
+
+    CreateTrainingMetricGroupRequest:
+      type: object
+      properties:
+        routineId:
+          type: string
+        sessionId:
+          type: string
+        trainingId:
+          type: string
+        exerciseId:
+          type: string
+        date:
+          type: string
+          format: date
+          description: Fecha operativa del set de captura; los timestamps completos se generan en `createdAt` y `updatedAt`.
+        metrics:
+          type: array
+          items:
+            $ref: '#/components/schemas/GroupMetricValueInput'
+      required: [routineId, sessionId, trainingId, exerciseId, date, metrics]
+      example:
+        routineId: routine-1
+        sessionId: session-1
+        trainingId: training-1
+        exerciseId: exercise-1
+        date: '2026-05-29'
+        metrics:
+          - metricId: weight
+            value: 80.5
+
+    HealthCheckResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [Healthy, Degraded, Unhealthy]
+        entries:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/HealthCheckEntry'
+      required: [status, entries]
+      example:
+        status: Healthy
+        entries:
+          training-metric-logs-dependencies:
+            status: Healthy
+            description: Training metric logs dependencies are available.
+            duration: 12.4
+            data: {}
+
+    HealthCheckEntry:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [Healthy, Degraded, Unhealthy]
+        description:
+          type: string
+          nullable: true
+        duration:
+          type: number
+          format: double
+          description: Duracion del check en milisegundos.
+        data:
+          type: object
+          additionalProperties: true
+      required: [status, duration, data]
+      example:
+        status: Degraded
+        description: Metric definitions dependency is unavailable. Module runs in degraded mode.
+        duration: 5.2
+        data: {}
+
+    TrainingMetricGroupResponse:
+      type: object
+      properties:
+        groupId:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/TrainingMetricLog'
+      required: [groupId, items]
+
+    UpdateMetricValueRequest:
+      type: object
+      properties:
+        value:
+          type: number
+          format: double
+      required: [value]

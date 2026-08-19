@@ -2,10 +2,12 @@
   "name": "gym-tracker",
   "private": true,
   "scripts": {
-    "dev": "concurrently -k -n BACK,FRONT -c yellow,cyan \"npm run dev:back\" \"npm run dev:front\"",
-    "dev:back": "dotnet watch --project backend/src/GymTracker.Api/GymTracker.Api.csproj run",
-    "dev:front": "npm --prefix frontend run dev",
-    "install:all": "npm install --prefix frontend"
+    "dev": "pwsh -NoProfile -ExecutionPolicy Bypass -File ./scripts/dev-with-docker.ps1",
+    "dev:concurrent": "concurrently -k -n BACK,FRONT -c yellow,cyan \"npm run dev:back\" \"npm run dev:front\"",
+    "dev:back": "dotnet watch --project src/backend/src/GymTracker.Api/GymTracker.Api.csproj run",
+    "dev:front": "npm --prefix src/frontend run dev",
+    "install:all": "npm install --prefix src/frontend",
+    "dev:health": "pwsh -NoProfile -ExecutionPolicy Bypass -File ./scripts/check-dev-health.ps1"
   },
   "devDependencies": {
     "concurrently": "^9.2.1"

@@ -1,0 +1,223 @@
+openapi: 3.0.3
+info:
+  title: Monthly Planning API
+  version: 1.0.0
+  description: API para configuracion mensual Semana > Dia con migracion dura desde Rutina/Sesion.
+servers:
+  - url: /api
+paths:
+  /monthly-plans/mine:
+    get:
+      summary: Obtener plan mensual del usuario autenticado
+      operationId: getMyMonthlyPlan
+      tags: [MonthlyPlans]
+      responses:
+        '200':
+          description: Plan mensual encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MonthlyPlanResponse'
+        '401':
+          description: No autenticado
+    put:
+      summary: Crear o actualizar plan mensual del propietario
+      operationId: upsertMyMonthlyPlan
+      tags: [MonthlyPlans]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpsertMonthlyPlanRequest'
+      responses:
+        '200':
+          description: Plan mensual actualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MonthlyPlanResponse'
+        '400':
+          description: Solicitud invalida
+        '401':
+          description: No autenticado
+        '403':
+          description: No autorizado (no propietario)
+
+  /monthly-plans/mine/truncate-days:
+    post:
+      summary: Reducir dias activos globales y recortar plan activo fuera de rango
+      operationId: truncateMyMonthlyPlanDays
+      tags: [MonthlyPlans]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TruncateDaysRequest'
+      responses:
+        '200':
+          description: Recorte aplicado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MonthlyPlanResponse'
+        '400':
+          description: Solicitud invalida
+        '401':
+          description: No autenticado
+        '403':
+          description: No autorizado
+
+  /monthly-plans/migration/hard:
+    post:
+      summary: Ejecutar migracion dura de datos legacy Rutina/Sesion a Semana/Dia
+      operationId: migrateLegacyRoutineSessionHard
+      tags: [MonthlyPlanMigration]
+      responses:
+        '200':
+          description: Migracion finalizada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MonthlyPlanMigrationResponse'
+        '401':
+          description: No autenticado
+        '403':
+          description: No autorizado
+
+components:
+  schemas:
+    UpsertMonthlyPlanRequest:
+      type: object
+      required: [activeDays, days]
+      properties:
+        activeDays:
+          type: integer
+          minimum: 1
+          maximum: 7
+        days:
+          type: array
+          items:
+            $ref: '#/components/schemas/DayPlanInput'
+
+    DayPlanInput:
+      type: object
+      required: [weekNumber, dayNumber, exercises]
+      properties:
+        weekNumber:
+          type: integer
+          minimum: 1
+          maximum: 4
+        dayNumber:
+          type: integer
+          minimum: 1
+          maximum: 7
+        exercises:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlannedExerciseInput'
+
+    PlannedExerciseInput:
+      type: object
+      required: [exerciseId, orderIndex]
+      properties:
+        exerciseId:
+          type: string
+        orderIndex:
+          type: integer
+          minimum: 0
+        notes:
+          type: string
+          nullable: true
+
+    TruncateDaysRequest:
+      type: object
+      required: [activeDays, confirmed]
+      properties:
+        activeDays:
+          type: integer
+          minimum: 1
+          maximum: 7
+        confirmed:
+          type: boolean
+          description: Debe ser true para aplicar recorte que afecta dias con ejercicios.
+
+    MonthlyPlanResponse:
+      type: object
+      required: [id, userId, activeDays, weeks]
+      properties:
+        id:
+          type: string
+        migrationVersion:
+          type: string
+        userId:
+          type: string
+        activeDays:
+          type: integer
+        weeks:
+          type: array
+          items:
+            $ref: '#/components/schemas/WeekPlanResponse'
+        updatedAt:
+          type: string
+          format: date-time
+
+    WeekPlanResponse:
+      type: object
+      required: [weekNumber, days]
+      properties:
+        weekNumber:
+          type: integer
+        days:
+          type: array
+          items:
+            $ref: '#/components/schemas/DayPlanResponse'
+
+    DayPlanResponse:
+      type: object
+      required: [weekNumber, dayNumber, status, exercises]
+      properties:
+        weekNumber:
+          type: integer
+        dayNumber:
+          type: integer
+        status:
+          type: string
+          enum: [Active, Truncated]
+        isTruncated:
+          type: boolean
+        exercises:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlannedExerciseResponse'
+
+    PlannedExerciseResponse:
+      type: object
+      required: [id, exerciseId, orderIndex]
+      properties:
+        id:
+          type: string
+        exerciseId:
+          type: string
+        orderIndex:
+          type: integer
+        notes:
+          type: string
+          nullable: true
+
+    MonthlyPlanMigrationResponse:
+      type: object
+      required: [monthlyPlanId, migratedSessions, migratedExercises, createdAuditRows, migratedAt]
+      properties:
+        monthlyPlanId:
+          type: string
+        migratedSessions:
+          type: integer
+        migratedExercises:
+          type: integer
+        createdAuditRows:
+          type: integer
+        migratedAt:
+          type: string
+          format: date-time
