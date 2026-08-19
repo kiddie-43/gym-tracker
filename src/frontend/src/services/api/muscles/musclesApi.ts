@@ -1,7 +1,7 @@
 import type {
   IMuscle,
   IMusclesFilter,
-} from '../../../interfaces/muscles/IMuscles';
+} from '../../../interfaces/IMuscles/IMuscles';
 import { IPaginated } from '../../../interfaces/skeleton/IPaginated/IPaginated';
 import { apiFetch } from '../../httpClient';
 import { adminAuthHeaders } from '../admin/common/adminAuthHeaders';
@@ -55,9 +55,11 @@ export function reactivateMuscle(id: string) {
 }
 
 export function importMusclesCsv(request: string) {
+  const formData = new FormData();
+  formData.append('file', new Blob([request], { type: 'text/csv' }), 'muscles.csv');
   return apiFetch<IMuscle>('/api/muscles/import-csv', {
     method: 'POST',
-    body: request,
+    body: formData,
     headers: adminAuthHeaders,
   });
 }

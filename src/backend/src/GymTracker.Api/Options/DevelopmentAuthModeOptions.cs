@@ -6,7 +6,7 @@ public sealed class DevelopmentAuthModeOptions
 
     public bool Enabled { get; init; }
 
-    public string UserId { get; init; } = "dev-local-user";
+    public string UserId { get; init; } = "11111111-1111-1111-1111-111111111111";
 
     public bool IsAdmin { get; init; } = true;
 }

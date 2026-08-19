@@ -30,7 +30,8 @@ public sealed class ExerciceImportDefinition : ICsvImportDefinition<Exercice, Ex
         return Exercice.Create(
             name: name,
             code: code,
-            description: description);
+            description: description,
+            exerciseType: "STRENGTH");
     }
 
     public Task SaveAsync(Exercice entity, CancellationToken cancellationToken)
@@ -45,6 +46,7 @@ public sealed class ExerciceImportDefinition : ICsvImportDefinition<Exercice, Ex
             entity.Name,
             entity.Code,
             entity.Description,
+            entity.ExerciseType.ToString(),
             [],
             [],
             []);

@@ -1,4 +1,4 @@
-import { ITableFilters } from "../../skeleton/IPaginated/IPaginated";
+import { ITableFilters } from "../skeleton/IPaginated/IPaginated";
 
 export interface IUnit {
   id?: string;

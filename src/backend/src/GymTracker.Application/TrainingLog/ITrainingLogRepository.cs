@@ -15,18 +15,15 @@ CancellationToken cancellationToken = default);
         Guid id,
         CancellationToken cancellationToken = default);
 
-/*     Task<IReadOnlyCollection<TrainingLog>> ListByGroupIdAsync(
+    Task<IReadOnlyCollection<TrainingLog>> ListByGroupIdAsync(
         Guid groupId,
         CancellationToken cancellationToken = default);
 
-    Task<IReadOnlyCollection<TrainingLog>> ListBySessionAsync(
-        string sessionId,
-        CancellationToken cancellationToken = default); */
     Task<IReadOnlyCollection<TrainingLog>> ListAsync(
         Guid userId,
-        string? routineId,
-        string? sessionId,
-        string? exerciseId,
+        int? weekNumber,
+        int? dayNumber,
+        string? exerciseCode,
         DateOnly? date,
         CancellationToken cancellationToken = default);
     Task DeleteAsync(

@@ -1,4 +1,5 @@
 using GymTracker.Domain.Entities;
+using GymTracker.Domain.Enum;
 
 public sealed class ExerciceService
 {
@@ -142,6 +143,14 @@ public sealed class ExerciceService
         return _csvImportService.ImportAsync(stream, cancellationToken);
     }
 
+    public IReadOnlyCollection<ExerciceTypeResponse> ListExerciseTypes()
+    {
+        return Enum
+            .GetValues<ExerciseType>()
+            .Select(exerciseType => new ExerciceTypeResponse(exerciseType.ToString()))
+            .ToArray();
+    }
+
     private static ExerciceResponse Map(Exercice exercice)
     {
         return new ExerciceResponse(
@@ -149,17 +158,21 @@ public sealed class ExerciceService
             exercice.Name,
             exercice.Code,
             exercice.Description,
+            exercice.ExerciseType.ToString(),
             exercice.Units
                 .Where(x => x.DeletedAt == null)
-                .Select(x => new ExerciceReferenceResponse(x.UnitId, x.Unit.Name))
+                .Where(x => x.Unit is not null)
+                .Select(x => new ExerciceReferenceResponse(x.Unit!.Code, x.Unit.Name))
                 .ToArray(),
             exercice.Muscles
                 .Where(x => x.DeletedAt == null && x.Type == ExerciceMuscleType.Primary)
-                .Select(x => new ExerciceReferenceResponse(x.MuscleId, x.Muscle.Name))
+                .Where(x => x.Muscle is not null)
+                .Select(x => new ExerciceReferenceResponse(x.Muscle!.Code, x.Muscle.Name))
                 .ToArray(),
             exercice.Muscles
                 .Where(x => x.DeletedAt == null && x.Type == ExerciceMuscleType.Secondary)
-                .Select(x => new ExerciceReferenceResponse(x.MuscleId, x.Muscle.Name))
+                .Where(x => x.Muscle is not null)
+                .Select(x => new ExerciceReferenceResponse(x.Muscle!.Code, x.Muscle.Name))
                 .ToArray());
     }
 
@@ -171,6 +184,7 @@ public sealed class ExerciceService
             RequiredTrimmed(request.Name, nameof(request.Name)),
             RequiredUpperCode(request.Code, nameof(request.Code)),
             OptionalTrimmed(request.Description),
+            RequiredTrimmed(request.ExerciseType, nameof(request.ExerciseType)).ToUpperInvariant(),
             request.Units ?? [],
             request.PrimaryMuscles ?? [],
             request.SecondaryMuscles ?? []);
@@ -183,6 +197,7 @@ public sealed class ExerciceService
         return new UpdateExerciceRequest(
             RequiredTrimmed(request.Name, nameof(request.Name)),
             OptionalTrimmed(request.Description),
+            RequiredTrimmed(request.ExerciseType, nameof(request.ExerciseType)).ToUpperInvariant(),
             request.Units ?? [],
             request.PrimaryMuscles ?? [],
             request.SecondaryMuscles ?? []);

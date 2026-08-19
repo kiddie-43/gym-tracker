@@ -15,7 +15,7 @@ public sealed class ExerciceRepository : IExerciceRepository
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        var entity = Exercice.Create(request.Name, request.Code, request.Description);
+        var entity = Exercice.Create(request.Name, request.Code, request.Description, request.ExerciseType);
 
         await AttachRelationsAsync(entity, request.Units, request.PrimaryMuscles, request.SecondaryMuscles, cancellationToken);
 
@@ -41,7 +41,7 @@ public sealed class ExerciceRepository : IExerciceRepository
             return null;
         }
 
-        entity.Update(request.Name, request.Description);
+        entity.Update(request.Name, request.Description, request.ExerciseType);
         await SyncRelationsAsync(entity, request.Units, request.PrimaryMuscles, request.SecondaryMuscles, cancellationToken);
 
         await _context.SaveChangesAsync(cancellationToken);

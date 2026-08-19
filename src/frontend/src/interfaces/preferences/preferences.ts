@@ -9,4 +9,6 @@ export interface AppPreferences {
   profile: UserProfile;
   themeMode: 'light' | 'dark';
   headerTitle: string;
+  headerShowBackButton: boolean;
+  headerBackRequestToken: number;
 }

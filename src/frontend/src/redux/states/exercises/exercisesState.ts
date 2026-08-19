@@ -26,6 +26,7 @@ export const exercisesInitialState: IReduxState<IExercisesFilter, IExercise> = {
     name: '',
     code: '',
     description: '',
+    exerciseType: 'STRENGTH',
 
 
     units: [],
@@ -41,3 +42,4 @@ export const exercisesInitialState: IReduxState<IExercisesFilter, IExercise> = {
 };
 
 export const selectExercisesState = (state: RootState) => state.exercises;
+export const selectExercicesForm = (state: RootState) => state.exercises.form;

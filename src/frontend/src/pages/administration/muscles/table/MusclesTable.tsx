@@ -17,7 +17,7 @@ import { useTranslation } from 'react-i18next';
 
 import { DataTable } from '../../../../components/DataTable/DataTable';
 import { PopUpCode } from '../../../../enums/popUp/popUp';
-import type { IMuscle } from '../../../../interfaces/muscles/IMuscles';
+import type { IMuscle } from '../../../../interfaces/IMuscles/IMuscles';
 import { fetchAdminMuscles, setMusclesForm, setMusclesPopUpCode, setMusclesTable } from '../../../../redux/actions/muscles/musclesActions';
 import { useAppDispatch, useAppSelector } from '../../../../redux/hooks';
 import { selectMusclesState } from '../../../../redux/states/adminMuscles/adminMusclesState';

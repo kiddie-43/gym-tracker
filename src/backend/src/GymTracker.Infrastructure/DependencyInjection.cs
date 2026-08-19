@@ -1,5 +1,7 @@
 using System.Reflection;
+using GymTracker.Application.MonthlyPlan;
 using GymTracker.Infrastructure.Admin;
+using GymTracker.Infrastructure.MonthlyPlan;
 using GymTracker.Infrastructure.Observability;
 using GymTracker.Infrastructure.Sql;
 using Microsoft.EntityFrameworkCore;
@@ -23,6 +25,8 @@ public static class DependencyInjection
             services.AddDbContext<AdminDbContext>(options =>
                 options.UseSqlServer(sqlConnectionString));
         }
+
+        services.AddScoped<IMonthlyPlanRepository, MonthlyPlanRepository>();
 
         services.Scan(scan => scan
             .FromAssemblies(Assembly.GetExecutingAssembly())

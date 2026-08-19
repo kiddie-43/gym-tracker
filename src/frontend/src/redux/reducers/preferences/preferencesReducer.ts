@@ -1,6 +1,8 @@
 import { createReducer } from '@reduxjs/toolkit';
 
 import {
+  requestPreferencesHeaderBack,
+  setPreferencesHeaderShowBackButton,
   setPreferencesHeaderTitle,
   setPreferencesProfile,
   setPreferencesThemeMode,
@@ -17,5 +19,11 @@ export const preferencesReducer = createReducer(preferencesInitialState, (builde
     })
     .addCase(setPreferencesHeaderTitle, (state, action) => {
       state.headerTitle = action.payload;
+    })
+    .addCase(setPreferencesHeaderShowBackButton, (state, action) => {
+      state.headerShowBackButton = action.payload;
+    })
+    .addCase(requestPreferencesHeaderBack, (state) => {
+      state.headerBackRequestToken += 1;
     });
 });

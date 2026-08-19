@@ -60,9 +60,11 @@ export function reactivateUnit(id: string): Promise<IUnit> {
 }
 
 export function importUnitsCsv(request: string): Promise<IUnit> {
+  const formData = new FormData();
+  formData.append('file', new Blob([request], { type: 'text/csv' }), 'units.csv');
   return apiFetch<IUnit>('/api/Units/import-csv', {
     method: 'POST',
-    body: request,
+    body: formData,
     headers: adminAuthHeaders,
   });
 }

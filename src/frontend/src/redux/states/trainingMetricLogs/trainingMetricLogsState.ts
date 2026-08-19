@@ -1,72 +1,41 @@
 import { PopUpCode } from '../../../enums/popUp/popUp';
-import type {
-  CreateTrainingMetricGroupRequest,
-  MetricDefinition,
-  TrainingMetricLog,
-} from '../../../interfaces/routines/trainingMetricLogs/TrainingMetricLog';
+import { ITrainingLogMetricFilter, ITrainingMetricLog } from '../../../interfaces/ITrainingMetricLogs/ITrainingMetricLog';
+
+import { IReduxState } from '../../../interfaces/skeleton/IRedux/IReduxState';
 import type { RootState } from '../../store';
 
-export type TrainingMetricLogsFilters = {
-  routineId: string;
-  sessionId: string;
-  trainingId: string;
-  exerciseId: string;
-  metricId: string;
-};
-
-export type TrainingMetricLogsTable = {
-  list: TrainingMetricLog[];
-  page: number;
-  rowsPerPage: number;
-  totalCount: number;
-  sortBy: 'date' | 'createdAt' | 'updatedAt' | 'value';
-  sortDirection: 'asc' | 'desc';
-  selectedIds: string[];
-};
-
-export type TrainingMetricLogsState = {
-  table: TrainingMetricLogsTable;
-  filters: TrainingMetricLogsFilters;
-  form: CreateTrainingMetricGroupRequest;
-  metrics: MetricDefinition[];
-  metricsDegraded: boolean;
-  error: string | null;
-  loading: boolean;
-  popUpCode: PopUpCode;
-  message: string | null;
-};
-
-export const trainingMetricLogsInitialState: TrainingMetricLogsState = {
+export const trainingMetricLogsInitialState: IReduxState<ITrainingLogMetricFilter, ITrainingMetricLog> = {
   table: {
-    list: [],
+    items: [],
     page: 0,
-    rowsPerPage: 20,
-    totalCount: 0,
-    sortBy: 'createdAt',
+    pageSize: 10,
+    sortBy: 'timestamp',
     sortDirection: 'desc',
     selectedIds: [],
+    totalCount: 0,
   },
   filters: {
-    routineId: '',
-    sessionId: '',
-    trainingId: '',
+    weekNumber: undefined,
+    dayNumber: undefined,
     exerciseId: '',
-    metricId: '',
+    exerciseCode: '',
   },
   form: {
-    routineId: '',
-    sessionId: '',
-    trainingId: '',
+    id: '',
+    groupId: '',
+    weekNumber: undefined,
+    dayNumber: undefined,
     exerciseId: '',
-    date: '',
+    exerciseCode: '',
+    timestamp: '',
+    unitValues: {},
     metrics: [],
   },
-  metrics: [],
-  metricsDegraded: false,
   error: null,
   loading: false,
   popUpCode: PopUpCode.Default,
   message: null,
+  restTimerSeconds: 0,
 };
 
 export const selectTrainingMetricLogsState = (state: RootState) => state.trainingMetricLogs;

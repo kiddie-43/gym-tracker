@@ -1,6 +1,6 @@
 import { createAction, createAsyncThunk } from '@reduxjs/toolkit';
 
-import type { IMuscle, IMusclesFilter } from '../../../interfaces/muscles/IMuscles';
+import type { IMuscle, IMusclesFilter } from '../../../interfaces/IMuscles/IMuscles';
 import {
   createMuscle as createMuscleApi,
   deleteMuscle as deleteMuscleApi,

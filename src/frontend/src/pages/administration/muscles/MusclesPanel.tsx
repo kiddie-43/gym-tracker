@@ -9,7 +9,7 @@ import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import { useTranslation } from 'react-i18next';
 
-import type { IMuscle } from '../../../interfaces/muscles/IMuscles';
+import type { IMuscle } from '../../../interfaces/IMuscles/IMuscles';
 import { FeedbackMessage } from '../../../components/FeedbackMessage/FeedbackMessage';
 import { PopupDialog } from '../../../components/PopupDialog/PopupDialog';
 import { PopUpCode } from '../../../enums/popUp/popUp';

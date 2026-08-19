@@ -2,39 +2,42 @@ namespace GymTracker.Application.TrainingLog;
 
 
 public sealed record CreateTrainingEntryRequest(
-    string RoutineId,
-    string SessionId,
-    string ExerciseId,
+    int WeekNumber,
+    int DayNumber,
+    string ExerciseCode,
     IReadOnlyCollection<CreateTrainingMetricRequest> Metrics
 );
 
 
 public sealed record UpdateTrainingLogValueRequest(
-    decimal Value
+    int WeekNumber,
+    int DayNumber,
+    string ExerciseCode,
+    IReadOnlyCollection<CreateTrainingMetricRequest> Metrics
 );
 
 
 public sealed record TrainingLogResponse(
      Guid Id,
     Guid GroupId,
-    string RoutineId,
-    string SessionId,
-    string ExerciseId,
-    string MetricId,
+    int WeekNumber,
+    int DayNumber,
+    string ExerciseCode,
+    string UnitCode,
     decimal Value,
     DateTimeOffset Timestamp,
     Guid UserId);
 
 public sealed record CreateTrainingMetricRequest(
-    string MetricId,
+    string Code,
     decimal Value
 );
 
 
 public sealed record TrainingLogGroupResponse(
     Guid GroupId,
-    string RoutineId,
-    string SessionId,
+    int WeekNumber,
+    int DayNumber,
     string ExerciseId,
     DateTimeOffset Timestamp,
     IReadOnlyCollection<TrainingLogMetricResponse> Metrics
@@ -42,7 +45,7 @@ public sealed record TrainingLogGroupResponse(
 
 public sealed record TrainingLogMetricResponse(
     Guid Id,
-    string MetricId,
+    string UnitCode,
     decimal Value
 );
 

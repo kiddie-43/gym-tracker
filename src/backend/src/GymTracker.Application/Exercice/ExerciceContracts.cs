@@ -2,6 +2,7 @@ public sealed record CreateExerciceRequest(
     string Name,
     string Code,
     string? Description,
+    string ExerciseType,
     IReadOnlyCollection<Guid> Units,
     IReadOnlyCollection<Guid> PrimaryMuscles,
     IReadOnlyCollection<Guid> SecondaryMuscles
@@ -10,12 +11,13 @@ public sealed record CreateExerciceRequest(
 public sealed record UpdateExerciceRequest(
     string Name,
     string? Description,
+    string ExerciseType,
     IReadOnlyCollection<Guid> Units,
     IReadOnlyCollection<Guid> PrimaryMuscles,
     IReadOnlyCollection<Guid> SecondaryMuscles
     );
 public sealed record ExerciceReferenceResponse(
-    Guid Id,
+   string Code,
     string Name
     
     );
@@ -25,10 +27,13 @@ public sealed record ExerciceResponse(
     string Name,
     string Code,
     string? Description,
+    string ExerciseType,
     IReadOnlyCollection<ExerciceReferenceResponse> Units,
     IReadOnlyCollection<ExerciceReferenceResponse> PrimaryMuscles,
     IReadOnlyCollection<ExerciceReferenceResponse> SecondaryMuscles
     );
+
+public sealed record ExerciceTypeResponse(string Code);
 
     public sealed record ExercicePageResponse(
     IReadOnlyCollection<ExerciceResponse> Items,

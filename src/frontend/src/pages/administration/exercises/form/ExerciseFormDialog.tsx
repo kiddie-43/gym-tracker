@@ -11,11 +11,13 @@ import { PopupDialog } from '../../../../components/PopupDialog/PopupDialog';
 import { PopUpCode } from '../../../../enums/popUp/popUp';
 import type { IUnit } from '../../../../interfaces/units/IUnit';
 import type { IExercise } from '../../../../interfaces/IExercises/IExercises';
-import type { IMuscle } from '../../../../interfaces/muscles/IMuscles';
+import type { ISelectorOption } from '../../../../interfaces/skeleton/ISelectorOption/ISelectorOption';
+import type { IMuscle } from '../../../../interfaces/IMuscles/IMuscles';
 import { updateExerciseFormAction } from '../../../../redux/actions/exercises/exercisesActions';
 import { setExerciseDialogStateAction, submitExerciseFormAction } from '../../../../redux/actions/exercises/exercisesActions';
 import { useAppDispatch, useAppSelector } from '../../../../redux/hooks';
 import { selectExercisesState } from '../../../../redux/states/exercises/exercisesState';
+import { listExerciseTypes } from '../../../../services/api/exercises/exercisesApi';
 import { listMusclesPage } from '../../../../services/api/muscles/musclesApi';
 import { listUnitsPage } from '../../../../services/api/units/unitsApi';
 
@@ -30,6 +32,7 @@ export function ExerciseFormDialog() {
   } = useAppSelector(selectExercisesState);
   const [localReferenceMeasurementTypes, setLocalReferenceMeasurementTypes] = useState<IUnit[]>([]);
   const [localReferenceMuscles, setLocalReferenceMuscles] = useState<IMuscle[]>([]);
+  const [localReferenceExerciseTypes, setLocalReferenceExerciseTypes] = useState<ISelectorOption[]>([]);
   const [loadingReferences, setLoadingReferences] = useState(false);
 
   useEffect(() => {
@@ -39,7 +42,7 @@ export function ExerciseFormDialog() {
       setLoadingReferences(true);
 
       try {
-        const [musclesPage, unitsPage] = await Promise.all([
+        const [musclesPage, unitsPage, exerciseTypes] = await Promise.all([
           listMusclesPage({ page: 0, pageSize: 999 }),
           listUnitsPage({
             page: 0, pageSize: 999,
@@ -47,6 +50,7 @@ export function ExerciseFormDialog() {
             name: '',
             description: ''
           }),
+          listExerciseTypes(),
         ]);
 
         if (!isMounted) {
@@ -55,6 +59,7 @@ export function ExerciseFormDialog() {
 
         setLocalReferenceMuscles(musclesPage.items ?? []);
         setLocalReferenceMeasurementTypes(unitsPage.items ?? []);
+        setLocalReferenceExerciseTypes(exerciseTypes ?? []);
       } finally {
         if (isMounted) {
           setLoadingReferences(false);
@@ -80,10 +85,12 @@ export function ExerciseFormDialog() {
     void dispatch(submitExerciseFormAction() as never);
   };
   const selectedMeasurementTypes = formState.units ?? [];
+  const selectedExerciseType = localReferenceExerciseTypes.find((option) => option.code === formState.exerciseType) ?? null;
   const disableSave =
     loading ||
     loadingReferences ||
     (formState.name ?? '').trim().length === 0 ||
+    (formState.exerciseType ?? '').trim().length === 0 ||
     (formState.primaryMuscles ?? []).length === 0 ||
     (formState.units ?? []).length === 0;
 
@@ -106,18 +113,18 @@ export function ExerciseFormDialog() {
             onChange={(event) => onEditForm('name', event.target.value)}
             fullWidth
           />
-         {formState.id ? null : (
-          <TextField
-            label={t('common.fields.code')}
-            value={formState.code ?? ''}
-            onChange={(event) => onEditForm('code', event.target.value)}
-            disabled={Boolean(formState.id)}
-            helperText={formState.id ? t('common.messages.codeReadOnly') : undefined}
-            fullWidth
-          />
+          {formState.id ? null : (
+            <TextField
+              label={t('common.fields.code')}
+              value={formState.code ?? ''}
+              onChange={(event) => onEditForm('code', event.target.value)}
+              disabled={Boolean(formState.id)}
+              helperText={formState.id ? t('common.messages.codeReadOnly') : undefined}
+              fullWidth
+            />
           )}
         </Stack>
-        
+
 
         <TextField
           label={t('common.fields.description')}
@@ -126,7 +133,22 @@ export function ExerciseFormDialog() {
           fullWidth
         />
 
-     
+        <Autocomplete
+          options={localReferenceExerciseTypes}
+          value={selectedExerciseType}
+          isOptionEqualToValue={(option, value) => option.code === value.code}
+          getOptionLabel={(option) => t(`administration.exercises.exerciseTypes.${option.code}`, { defaultValue: option.code })}
+          onChange={(_event, value) => onEditForm('exerciseType', value?.code ?? '')}
+          renderInput={(params) => (
+            <TextField
+              {...params}
+              label={t('administration.exercises.fields.exerciseType')}
+              placeholder={t('administration.exercises.fields.exerciseType')}
+            />
+          )}
+        />
+
+
 
         <Autocomplete
           multiple

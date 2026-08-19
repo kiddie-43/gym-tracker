@@ -12,6 +12,7 @@ public sealed class OpenApiConfiguration : IConfigureOptions<SwaggerGenOptions>
         {
             Title = "Gym Tracker API",
             Version = "v1",
+            Description = "Includes monthly planning endpoints under /api/monthly-plans and hard migration endpoint under /api/monthly-plans/migration.",
         });
 
         options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme

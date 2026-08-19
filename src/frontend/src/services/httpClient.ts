@@ -18,11 +18,12 @@ export class ApiHttpError extends Error {
 export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const language = i18n.resolvedLanguage ?? i18n.language ?? 'es';
   const hasAuthorizationHeader = hasHeader(init?.headers, 'Authorization');
+  const isFormData = typeof FormData !== 'undefined' && init?.body instanceof FormData;
 
   const response = await fetch(new URL(path, API_BASE_URL), {
     ...init,
     headers: {
-      'Content-Type': 'application/json',
+      ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
       'Accept-Language': language,
       ...(import.meta.env.DEV && !hasAuthorizationHeader
         ? { Authorization: `Bearer ${DEV_AUTH_TOKEN}` }

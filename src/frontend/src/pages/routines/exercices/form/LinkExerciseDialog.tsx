@@ -44,8 +44,6 @@ export function LinkExerciseDialog({ open, linkedExerciseIds, onClose, onLink }:
       setLoading(true);
       try {
         const response = await listExercisesPage({
-          search: search.trim() || undefined,
-          includeDeleted: false,
           page: 0,
           pageSize: 100,
         });
@@ -72,14 +70,22 @@ export function LinkExerciseDialog({ open, linkedExerciseIds, onClose, onLink }:
   }, [open, search]);
 
   const filtered = useMemo(() => {
+    const normalizedSearch = search.trim().toLowerCase();
+
     return catalog.filter((ex) => {
       if (linkedExerciseIds.includes(ex.id ?? '')) {
         return false;
       }
 
-      return true;
+      if (!normalizedSearch) {
+        return true;
+      }
+
+      return [ex.name, ex.code, ex.description]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(normalizedSearch));
     });
-  }, [catalog, linkedExerciseIds]);
+  }, [catalog, linkedExerciseIds, search]);
 
   const selectedExercise = catalog.find((ex) => ex.id === form.id) ?? null;
 
@@ -162,7 +168,7 @@ export function LinkExerciseDialog({ open, linkedExerciseIds, onClose, onLink }:
                 >
                   <ListItemText
                     primary={ex.name}
-                    secondary={[ex.category, ex.difficulty].filter(Boolean).join(' · ')}
+                    //secondary={[ex.category, ex.difficulty].filter(Boolean).join(' · ')}
                   />
                 </ListItemButton>
               </ListItem>

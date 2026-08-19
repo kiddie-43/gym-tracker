@@ -23,6 +23,13 @@ public sealed class AdminDbContext : DbContext
     public DbSet<TrainingLog> TrainingLogs => Set<TrainingLog>();
     public DbSet<Example> Examples => Set<Example>();
     public DbSet<Exercice> Exercices => Set<Exercice>();
+    public DbSet<Domain.Entities.MonthlyPlan> MonthlyPlans => Set<Domain.Entities.MonthlyPlan>();
+    public DbSet<PlanWeek> PlanWeeks => Set<PlanWeek>();
+    public DbSet<PlanDay> PlanDays => Set<PlanDay>();
+    public DbSet<PlannedExercise> PlannedExercises => Set<PlannedExercise>();
+    public DbSet<HistoricalExerciseRecord> HistoricalExerciseRecords => Set<HistoricalExerciseRecord>();
+    public DbSet<Domain.Entities.TrainingSession> TrainingSessions => Set<Domain.Entities.TrainingSession>();
+    public DbSet<SessionBlock> SessionBlocks => Set<SessionBlock>();
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         ConfigureMuscle(modelBuilder);
@@ -33,6 +40,13 @@ public sealed class AdminDbContext : DbContext
         ConfigureExercice(modelBuilder);
         ConfigureExerciceMuscle(modelBuilder);
         ConfigureExerciceUnit(modelBuilder);
+        ConfigureMonthlyPlan(modelBuilder);
+        ConfigurePlanWeek(modelBuilder);
+        ConfigurePlanDay(modelBuilder);
+        ConfigurePlannedExercise(modelBuilder);
+        ConfigureHistoricalExerciseRecord(modelBuilder);
+        ConfigureTrainingSession(modelBuilder);
+        ConfigureSessionBlock(modelBuilder);
     }
 
     private static void ConfigureMuscle(ModelBuilder modelBuilder)
@@ -130,16 +144,16 @@ public sealed class AdminDbContext : DbContext
             entity.Property(x => x.GroupId)
                 .IsRequired();
 
-            entity.Property(x => x.RoutineId)
+            entity.Property(x => x.WeekNumber)
                 .IsRequired();
 
-            entity.Property(x => x.SessionId)
+            entity.Property(x => x.DayNumber)
                 .IsRequired();
 
-            entity.Property(x => x.ExerciseId)
+            entity.Property(x => x.ExerciseCode)
                 .IsRequired();
 
-            entity.Property(x => x.MetricId)
+            entity.Property(x => x.UnitCode)
                 .IsRequired();
 
             entity.Property(x => x.Value)
@@ -152,22 +166,18 @@ public sealed class AdminDbContext : DbContext
             entity.Property(x => x.UserId)
                 .IsRequired();
 
-            entity.HasOne<DomainUnit>()
-                .WithMany()
-                .HasForeignKey(x => x.MetricId)
-                .OnDelete(DeleteBehavior.Restrict);
-
             entity.HasIndex(x => x.GroupId);
-            entity.HasIndex(x => x.RoutineId);
-            entity.HasIndex(x => x.SessionId);
-            entity.HasIndex(x => x.ExerciseId);
-            entity.HasIndex(x => x.MetricId);
+            entity.HasIndex(x => x.WeekNumber);
+            entity.HasIndex(x => x.DayNumber);
+            entity.HasIndex(x => x.ExerciseCode);
+            entity.HasIndex(x => x.UnitCode);
             entity.HasIndex(x => x.UserId);
 
             entity.HasIndex(x => new
             {
-                x.SessionId,
-                x.ExerciseId
+                x.WeekNumber,
+                x.DayNumber,
+                x.ExerciseCode
             });
         });
     }
@@ -189,6 +199,11 @@ public sealed class AdminDbContext : DbContext
 
             entity.Property(e => e.Description)
                 .HasMaxLength(1000);
+
+            entity.Property(e => e.ExerciseType)
+                .HasConversion<string>()
+                .HasMaxLength(30)
+                .IsRequired();
 
             entity.HasIndex(e => e.Code)
                 .HasFilter("[DeletedAt] IS NULL")
@@ -247,6 +262,278 @@ public sealed class AdminDbContext : DbContext
                 .OnDelete(DeleteBehavior.Restrict);
         });
     }
+
+    private static void ConfigureMonthlyPlan(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<Domain.Entities.MonthlyPlan>(entity =>
+        {
+            entity.ToTable("MonthlyPlans");
+
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.UserId)
+                .IsRequired();
+
+            entity.Property(e => e.ActiveDays)
+                .IsRequired();
+
+            entity.Property(e => e.MigrationVersion)
+                .HasMaxLength(20)
+                .IsRequired();
+
+            entity.HasMany(e => e.Weeks)
+                .WithOne()
+                .HasForeignKey(e => e.MonthlyPlanId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasMany(e => e.PlannedExercises)
+                .WithOne()
+                .HasForeignKey(e => e.MonthlyPlanId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasIndex(e => e.UserId)
+                .HasFilter("[DeletedAt] IS NULL")
+                .IsUnique();
+        });
+    }
+
+    private static void ConfigurePlanWeek(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<PlanWeek>(entity =>
+        {
+            entity.ToTable("PlanWeeks");
+
+            entity.HasKey(e => new
+            {
+                e.MonthlyPlanId,
+                e.WeekNumber
+            });
+
+            entity.Property(e => e.WeekNumber)
+                .IsRequired();
+
+            entity.HasMany(e => e.Days)
+                .WithOne()
+                .HasForeignKey(e => new
+                {
+                    e.MonthlyPlanId,
+                    e.WeekNumber
+                })
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+    }
+
+    private static void ConfigurePlanDay(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<PlanDay>(entity =>
+        {
+            entity.ToTable("PlanDays");
+
+            entity.HasKey(e => new
+            {
+                e.MonthlyPlanId,
+                e.WeekNumber,
+                e.DayNumber
+            });
+
+            entity.Property(e => e.DayNumber)
+                .IsRequired();
+
+            entity.Property(e => e.Status)
+                .HasConversion<string>()
+                .HasMaxLength(20)
+                .IsRequired();
+
+            entity.Property(e => e.TruncatedAt);
+        });
+    }
+
+    private static void ConfigurePlannedExercise(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<PlannedExercise>(entity =>
+        {
+            entity.ToTable("PlannedExercises");
+
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.MonthlyPlanId)
+                .IsRequired();
+
+            entity.Property(e => e.UserId)
+                .IsRequired();
+
+            entity.Property(e => e.WeekNumber)
+                .IsRequired();
+
+            entity.Property(e => e.DayNumber)
+                .IsRequired();
+
+            entity.Property(e => e.ExerciseId)
+                .IsRequired();
+
+            entity.Property(e => e.OrderIndex)
+                .IsRequired();
+
+            entity.HasIndex(e => new
+            {
+                e.MonthlyPlanId,
+                e.WeekNumber,
+                e.DayNumber,
+                e.OrderIndex
+            });
+
+            entity.HasIndex(e => e.UserId);
+
+            entity.HasOne<PlanDay>()
+                .WithMany()
+                .HasForeignKey(e => new
+                {
+                    e.MonthlyPlanId,
+                    e.WeekNumber,
+                    e.DayNumber
+                })
+                .OnDelete(DeleteBehavior.NoAction);
+
+            entity.HasOne<Exercice>()
+                .WithMany()
+                .HasForeignKey(e => e.ExerciseId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+    }
+
+    private static void ConfigureHistoricalExerciseRecord(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<HistoricalExerciseRecord>(entity =>
+        {
+            entity.ToTable("HistoricalExerciseRecords");
+
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.SourcePlannedExerciseId)
+                .IsRequired();
+
+            entity.Property(e => e.UserId)
+                .IsRequired();
+
+            entity.Property(e => e.WeekNumber)
+                .IsRequired();
+
+            entity.Property(e => e.DayNumber)
+                .IsRequired();
+
+            entity.Property(e => e.Payload)
+                .HasMaxLength(4000)
+                .IsRequired();
+
+            entity.Property(e => e.SourceReason)
+                .HasMaxLength(100)
+                .IsRequired();
+
+            entity.Property(e => e.RecordedAt)
+                .IsRequired();
+        });
+    }
+
+    private static void ConfigureTrainingSession(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<Domain.Entities.TrainingSession>(entity =>
+        {
+            entity.ToTable("TrainingSessions");
+
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.UserId)
+                .IsRequired();
+
+            entity.Property(e => e.WeekNumber)
+                .IsRequired();
+
+            entity.Property(e => e.DayNumber)
+                .IsRequired();
+
+            entity.Property(e => e.ExerciseId)
+                .IsRequired();
+
+            entity.Property(e => e.Timestamp)
+                .IsRequired();
+
+            entity.Property(e => e.DurationMinutes)
+                .HasPrecision(18, 2)
+                .IsRequired();
+
+            entity.Property(e => e.SecondaryMetricValue)
+                .HasPrecision(18, 2)
+                .IsRequired();
+
+            entity.Property(e => e.SecondaryMetricUnitCode)
+                .HasMaxLength(50)
+                .IsRequired();
+
+            entity.Property(e => e.TertiaryMetricValue)
+                .HasPrecision(18, 2)
+                .IsRequired();
+
+            entity.Property(e => e.Notes)
+                .HasMaxLength(150);
+
+            entity.HasMany(e => e.Blocks)
+                .WithOne()
+                .HasForeignKey(e => e.TrainingSessionId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne<Exercice>()
+                .WithMany()
+                .HasForeignKey(e => e.ExerciseId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasIndex(e => new
+            {
+                e.UserId,
+                e.WeekNumber,
+                e.DayNumber,
+                e.ExerciseId
+            });
+        });
+    }
+
+    private static void ConfigureSessionBlock(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<SessionBlock>(entity =>
+        {
+            entity.ToTable("SessionBlocks");
+
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.TrainingSessionId)
+                .IsRequired();
+
+            entity.Property(e => e.BlockType)
+                .HasConversion<string>()
+                .HasMaxLength(30)
+                .IsRequired();
+
+            entity.Property(e => e.Name)
+                .HasMaxLength(100)
+                .IsRequired();
+
+            entity.Property(e => e.DurationValue)
+                .HasPrecision(18, 2)
+                .IsRequired();
+
+            entity.Property(e => e.DurationUnitCode)
+                .HasMaxLength(50)
+                .IsRequired();
+
+            entity.Property(e => e.Description)
+                .HasMaxLength(100);
+
+            entity.Property(e => e.OrderIndex)
+                .IsRequired();
+
+            entity.HasIndex(e => e.TrainingSessionId);
+        });
+    }
+
     private static void ConfigureAuditableEntities(ModelBuilder modelBuilder)
     {
         foreach (var entityType in modelBuilder.Model.GetEntityTypes())

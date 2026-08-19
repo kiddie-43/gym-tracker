@@ -6,13 +6,6 @@ public abstract class CurrentUserControllerBase : ControllerBase
 {
     protected Guid? GetUserId()
     {
-
-        return  Guid.Parse("11111111-1111-1111-1111-111111111111");
-       /*  if (HttpContext.Items["CurrentUserId"] is string userId && !string.IsNullOrWhiteSpace(userId))
-        {
-            return userId;
-        } */
-
-/*         return null;
- */    }
+        return Guid.Parse("11111111-1111-1111-1111-111111111111");
+    }
 }

@@ -1,11 +1,6 @@
-import type {
-
-  IExercise,
-  IExercisesFilter,
-
-
-
-} from '../../../interfaces/IExercises/IExercises';
+import type { IExercise, IExercisesFilter } from '../../../interfaces/IExercises/IExercises';
+import type { IImportExercisesResult } from '../../../interfaces/IExercises/IExercises';
+import type { ISelectorOption } from '../../../interfaces/skeleton/ISelectorOption/ISelectorOption';
 import type { IPaginated } from '../../../interfaces/skeleton/IPaginated/IPaginated';
 import { apiFetch } from '../../httpClient';
 import { adminAuthHeaders } from '../admin/common/adminAuthHeaders';
@@ -41,11 +36,18 @@ export function getExerciseById(id: string) {
   });
 }
 
+export function listExerciseTypes() {
+  return apiFetch<ISelectorOption[]>('/api/exercices/types', {
+    headers: adminAuthHeaders,
+  });
+}
+
 export function createExercise(request: IExercise) {
  const exerciceToSave = {
     code: request.code,
     name: request.name,
     description: request.description,
+   exerciseType: request.exerciseType ?? 'STRENGTH',
     primaryMuscles: request.primaryMuscles.map(muscle => muscle.id),
     secondaryMuscles: request.secondaryMuscles.map(muscle => muscle.id),
     units: request.units.map(unit => unit.id),
@@ -62,6 +64,7 @@ export function updateExercise(id: string, request: IExercise) {
   const exerciceToSave = {
     name: request.name,
     description: request.description,
+    exerciseType: request.exerciseType ?? 'STRENGTH',
     primaryMuscles: request.primaryMuscles.map(muscle => muscle.id),
     secondaryMuscles: request.secondaryMuscles.map(muscle => muscle.id),
     units: request.units.map(unit => unit.id),
@@ -97,6 +100,16 @@ export function reactivateExercise(id: string) {
     headers: adminAuthHeaders,
   });
 } */
+
+export function importExercisesCsv(request: string) {
+  const formData = new FormData();
+  formData.append('file', new Blob([request], { type: 'text/csv' }), 'exercises.csv');
+  return apiFetch<IImportExercisesResult>('/api/exercices/import-csv', {
+    method: 'POST',
+    body: formData,
+    headers: adminAuthHeaders,
+  });
+}
 
 /* export function requestExerciseUploadUrl(exerciseId: string, request: IRequestUploadUrlRequest) {
   return apiFetch<IMediaUploadTicket>(`/api/exercices/${exerciseId}/media/request-upload`, {

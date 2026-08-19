@@ -30,6 +30,7 @@ public sealed class ExceptionHandlingMiddleware
                 : context.TraceIdentifier;
 
             correlationIdAccessor.Set(correlationId);
+            context.Response.Headers["X-Correlation-Id"] = correlationId;
 
             _logger.LogError(exception, "Unhandled exception for request {Path} with correlation id {CorrelationId}", context.Request.Path, correlationId);
 
@@ -38,9 +39,14 @@ public sealed class ExceptionHandlingMiddleware
                 throw;
             }
 
-            var statusCode = exception is RpcException rpcException && rpcException.StatusCode == StatusCode.ResourceExhausted
-                ? StatusCodes.Status503ServiceUnavailable
-                : StatusCodes.Status500InternalServerError;
+            var statusCode = exception switch
+            {
+                ArgumentException => StatusCodes.Status400BadRequest,
+                UnauthorizedAccessException => StatusCodes.Status403Forbidden,
+                InvalidOperationException => StatusCodes.Status409Conflict,
+                RpcException rpcException when rpcException.StatusCode == StatusCode.ResourceExhausted => StatusCodes.Status503ServiceUnavailable,
+                _ => StatusCodes.Status500InternalServerError,
+            };
 
             context.Response.StatusCode = statusCode;
             context.Response.ContentType = "application/problem+json";
@@ -48,12 +54,22 @@ public sealed class ExceptionHandlingMiddleware
             var problemDetails = new ProblemDetails
             {
                 Status = statusCode,
-                Title = statusCode == StatusCodes.Status503ServiceUnavailable
-                    ? "Service temporarily unavailable."
-                    : "An unexpected error occurred.",
-                Detail = statusCode == StatusCodes.Status503ServiceUnavailable
-                    ? "A dependent service quota was exceeded. Retry later or contact support if the issue persists."
-                    : "Review the server logs with the provided correlation id.",
+                Title = statusCode switch
+                {
+                    StatusCodes.Status400BadRequest => "Invalid request.",
+                    StatusCodes.Status403Forbidden => "Forbidden.",
+                    StatusCodes.Status409Conflict => "Conflict.",
+                    StatusCodes.Status503ServiceUnavailable => "Service temporarily unavailable.",
+                    _ => "An unexpected error occurred.",
+                },
+                Detail = statusCode switch
+                {
+                    StatusCodes.Status400BadRequest => exception.Message,
+                    StatusCodes.Status403Forbidden => "You are not allowed to perform this operation.",
+                    StatusCodes.Status409Conflict => exception.Message,
+                    StatusCodes.Status503ServiceUnavailable => "A dependent service quota was exceeded. Retry later or contact support if the issue persists.",
+                    _ => "Review the server logs with the provided correlation id.",
+                },
                 Instance = context.Request.Path,
             };
 

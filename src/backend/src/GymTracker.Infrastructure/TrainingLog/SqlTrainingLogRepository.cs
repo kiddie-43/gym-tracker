@@ -36,16 +36,7 @@ public sealed class SqlTrainingLogRepository : ITrainingLogRepository
         CancellationToken cancellationToken = default)
     {
         return await _context.TrainingLogs
-            .Where(x => x.GroupId == groupId)
-            .ToArrayAsync(cancellationToken);
-    }
-
-    public async Task<IReadOnlyCollection<TrainingLog>> ListBySessionAsync(
-        string sessionId,
-        CancellationToken cancellationToken = default)
-    {
-        return await _context.TrainingLogs
-            .Where(x => x.SessionId == sessionId)
+            .Where(x => x.GroupId == groupId && x.DeletedAt == null)
             .ToArrayAsync(cancellationToken);
     }
 
@@ -66,9 +57,9 @@ public sealed class SqlTrainingLogRepository : ITrainingLogRepository
     }
     public async Task<IReadOnlyCollection<TrainingLog>> ListAsync(
         Guid userId,
-        string? routineId,
-        string? sessionId,
-        string? exerciseId,
+        int? weekNumber,
+        int? dayNumber,
+        string? exerciseCode,
         DateOnly? date,
         CancellationToken cancellationToken = default)
     {
@@ -76,19 +67,19 @@ public sealed class SqlTrainingLogRepository : ITrainingLogRepository
             .Where(x => x.UserId == userId && x.DeletedAt == null)
             .AsQueryable();
 
-        if (!string.IsNullOrWhiteSpace(routineId))
+        if (weekNumber.HasValue)
         {
-            query = query.Where(x => x.RoutineId == routineId);
+            query = query.Where(x => x.WeekNumber == weekNumber.Value);
         }
 
-        if (!string.IsNullOrWhiteSpace(sessionId))
+        if (dayNumber.HasValue)
         {
-            query = query.Where(x => x.SessionId == sessionId);
+            query = query.Where(x => x.DayNumber == dayNumber.Value);
         }
 
-        if (!string.IsNullOrWhiteSpace(exerciseId) && Guid.TryParse(exerciseId, out var parsedExerciseId))
+        if (!string.IsNullOrWhiteSpace(exerciseCode))
         {
-            query = query.Where(x => x.ExerciseId == parsedExerciseId);
+            query = query.Where(x => x.ExerciseCode == exerciseCode);
         }
 
         if (date.HasValue)

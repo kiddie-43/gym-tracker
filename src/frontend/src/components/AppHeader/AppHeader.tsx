@@ -19,6 +19,7 @@ import Stack from '@mui/material/Stack';
 import Toolbar from '@mui/material/Toolbar';
 import Typography from '@mui/material/Typography';
 import AdminPanelSettingsRoundedIcon from '@mui/icons-material/AdminPanelSettingsRounded';
+import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded';
 import LogoutRoundedIcon from '@mui/icons-material/LogoutRounded';
 import MenuIcon from '@mui/icons-material/Menu';
 import PersonRoundedIcon from '@mui/icons-material/PersonRounded';
@@ -29,8 +30,10 @@ import { useTranslation } from 'react-i18next';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 
 import { useSelector } from 'react-redux';
+import { useDispatch } from 'react-redux';
 
 import { selectPreferencesState } from '../../redux/states/preferences/preferencesState';
+import { requestPreferencesHeaderBack } from '../../redux/actions/preferences/preferencesActions';
 
 interface NavigationLink {
   to: string;
@@ -44,12 +47,13 @@ const links: NavigationLink[] = [
 ];
 
 export function AppHeader() {
+  const dispatch = useDispatch();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [profileAnchor, setProfileAnchor] = useState<null | HTMLElement>(null);
   const location = useLocation();
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
-  const { profile, headerTitle } = useSelector(selectPreferencesState);
+  const { profile, headerTitle, headerShowBackButton } = useSelector(selectPreferencesState);
 
   const displayFirstName = profile.firstName || t('user.defaultName');
   const displayLastName = profile.lastName || t('user.defaultLastName');
@@ -94,7 +98,7 @@ export function AppHeader() {
   return (
     <>
       <AppBar
-        position="sticky"
+        position="static"
         elevation={0}
         sx={{
           borderBottom: '1px solid',
@@ -106,15 +110,22 @@ export function AppHeader() {
           <Stack direction="row" alignItems="center" justifyContent="space-between" width="100%" gap={2}>
             <Stack direction="row" spacing={1.5} alignItems="center" sx={{ minWidth: 0, flex: 1 }}>
               <IconButton
-                aria-label={t('header.menuLabel')}
-                onClick={() => setIsMenuOpen(true)}
+                aria-label={headerShowBackButton ? 'Volver atras' : t('header.menuLabel')}
+                onClick={() => {
+                  if (headerShowBackButton) {
+                    dispatch(requestPreferencesHeaderBack());
+                    return;
+                  }
+
+                  setIsMenuOpen(true);
+                }}
                 sx={{
                   color: '#ffffff',
                   border: '1px solid rgba(255,255,255,0.24)',
                   borderRadius: 1.5,
                 }}
               >
-                <MenuIcon />
+                {headerShowBackButton ? <ArrowBackRoundedIcon /> : <MenuIcon />}
               </IconButton>
 
               <Box sx={{ minWidth: 0, flex: 1 }}>

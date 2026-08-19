@@ -42,12 +42,57 @@ public sealed class TrainingLogsController : CurrentUserControllerBase
             : Ok(log);
     }
 
+    [HttpPut("{groupId:guid}")]
+    public async Task<ActionResult<TrainingLogGroupResponse>> UpdateGroup(
+        Guid groupId,
+        [FromBody] UpdateTrainingLogValueRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var userId = GetUserId();
+        if (userId is null)
+        {
+            return Unauthorized();
+        }
 
-    [HttpGet("/api/[controller]/routine/{routineId}/session/{sessionId}/exercise/{exerciseId}/logs")]
+        try
+        {
+            var updated = await _service.UpdateValueAsync(groupId, request, userId.Value, cancellationToken);
+            return updated is null ? NotFound() : Ok(updated);
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Forbid();
+        }
+    }
+
+    [HttpDelete("{groupId:guid}")]
+    public async Task<IActionResult> Delete(
+        Guid groupId,
+        CancellationToken cancellationToken = default)
+    {
+        var userId = GetUserId();
+        if (userId is null)
+        {
+            return Unauthorized();
+        }
+
+        try
+        {
+            var deleted = await _service.DeleteAsync(groupId, userId.Value, cancellationToken);
+            return deleted ? NoContent() : NotFound();
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Forbid();
+        }
+    }
+
+
+    [HttpGet("/api/[controller]/week/{weekNumber:int}/day/{dayNumber:int}/exercise/{exerciseCode}/logs")]
     public async Task<ActionResult<IReadOnlyCollection<TrainingLogGroupResponse>>> List(
-        [FromRoute] string routineId,
-        [FromRoute] string sessionId,
-        [FromRoute] string exerciseId,
+        [FromRoute] int weekNumber,
+        [FromRoute] int dayNumber,
+        [FromRoute] string exerciseCode,
         CancellationToken cancellationToken = default)
     {
         var userId = GetUserId();
@@ -57,9 +102,9 @@ public sealed class TrainingLogsController : CurrentUserControllerBase
 
         var rows = await _service.ListAsync(
             userId.Value,
-            routineId,
-            sessionId,
-            exerciseId,
+            weekNumber,
+            dayNumber,
+            exerciseCode,
             cancellationToken);
 
         return Ok(rows);

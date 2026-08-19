@@ -4,13 +4,13 @@ public sealed class TrainingLog : AuditableEntity
 {
     public Guid GroupId { get; private set; }
 
-    public string RoutineId { get; private set; } = string.Empty;
+    public int WeekNumber { get; private set; }
 
-    public string SessionId { get; private set; } = string.Empty;
+    public int DayNumber { get; private set; }
 
-    public Guid ExerciseId { get; private set; }
+    public string ExerciseCode { get; private set; } = string.Empty;
 
-    public Guid MetricId { get; private set; }
+    public string UnitCode { get; private set; } = string.Empty;
 
     public decimal Value { get; private set; }
 
@@ -23,26 +23,26 @@ public sealed class TrainingLog : AuditableEntity
     }
 
     public static TrainingLog Create(
-        string routineId,
-        string sessionId,
-        Guid exerciseId,
-        Guid metricId,
+        int weekNumber,
+        int dayNumber,
+        string exerciseCode,
+        string unitCode,
         decimal value,
         DateTimeOffset timestamp,
         Guid userId,
         Guid? groupId = null)
     {
-        if (string.IsNullOrWhiteSpace(routineId))
-            throw new ArgumentException("RoutineId is required.", nameof(routineId));
+        if (weekNumber is < 1 or > 4)
+            throw new ArgumentException("WeekNumber must be between 1 and 4.", nameof(weekNumber));
 
-        if (string.IsNullOrWhiteSpace(sessionId))
-            throw new ArgumentException("SessionId is required.", nameof(sessionId));
+        if (dayNumber is < 1 or > 7)
+            throw new ArgumentException("DayNumber must be between 1 and 7.", nameof(dayNumber));
 
-        if (exerciseId == Guid.Empty)
-            throw new ArgumentException("ExerciseId is required.", nameof(exerciseId));
+        if (string.IsNullOrWhiteSpace(exerciseCode))
+            throw new ArgumentException("ExerciseCode is required.", nameof(exerciseCode));
 
-        if (metricId == Guid.Empty)
-            throw new ArgumentException("MetricId is required.", nameof(metricId));
+        if (string.IsNullOrWhiteSpace(unitCode))
+            throw new ArgumentException("UnitCode is required.", nameof(unitCode));
 
         if (userId == Guid.Empty)
             throw new ArgumentException("UserId is required.", nameof(userId));
@@ -54,10 +54,10 @@ public sealed class TrainingLog : AuditableEntity
         {
             Id = Guid.NewGuid(),
             GroupId = groupId ?? Guid.NewGuid(),
-            RoutineId = routineId,
-            SessionId = sessionId,
-            ExerciseId = exerciseId,
-            MetricId = metricId,
+            WeekNumber = weekNumber,
+            DayNumber = dayNumber,
+            ExerciseCode = exerciseCode,
+            UnitCode = unitCode,
             Value = value,
             Timestamp = timestamp,
             UserId = userId

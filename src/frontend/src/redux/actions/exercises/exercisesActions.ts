@@ -3,9 +3,10 @@ import { createAction } from '@reduxjs/toolkit';
 import type {
   IExercise,
   IExercisesFilter,
+  IImportExerciseCsvRowRequest,
 } from '../../../interfaces/IExercises/IExercises';
 import type { IUnit } from '../../../interfaces/units/IUnit';
-import type { IMuscle } from '../../../interfaces/muscles/IMuscles';
+import type { IMuscle } from '../../../interfaces/IMuscles/IMuscles';
 import { PopUpCode } from '../../../enums/popUp/popUp';
 
 import type { AppDispatch, RootState } from '../../store';
@@ -14,6 +15,7 @@ import {
   createExercise,
   deleteExercise,
   getExerciseById,
+  importExercisesCsv,
   listExercisesPage,
   reactivateExercise,
   updateExercise,
@@ -222,13 +224,23 @@ export const reactivateAdminExercise = (exerciseId: string) => async (dispatch: 
   }
 };
 
-export const importAdminExercisesCsv = (rows: IExercise[]) => async (dispatch: AppDispatch) => {
+export const importAdminExercisesCsv = (rows: IImportExerciseCsvRowRequest[]) => async (dispatch: AppDispatch) => {
   dispatch(setExercisesLoading(true));
   dispatch(setExercisesError(null));
 
   try {
-   // const result = await importExercisesCsv({ rows });
-   // dispatch(setExercisesCsvResult(result));
+    const escapeCsv = (value: string) => `"${value.replace(/"/g, '""')}"`;
+    const csvRaw = [
+      'code,name,description',
+      ...rows.map((row) => [
+        escapeCsv(row.code ?? ''),
+        escapeCsv(row.name ?? ''),
+        escapeCsv(row.description ?? ''),
+      ].join(',')),
+    ].join('\n');
+
+    const result = await importExercisesCsv(csvRaw);
+    dispatch(setExercisesCsvResult(result as unknown as IExercise));
   } catch (error) {
     dispatch(setExercisesError(error instanceof Error ? error.message : 'Error importing CSV'));
   } finally {

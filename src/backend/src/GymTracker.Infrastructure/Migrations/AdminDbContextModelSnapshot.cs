@@ -51,6 +51,242 @@ namespace GymTracker.Infrastructure.Migrations
                     b.ToTable("Examples", (string)null);
                 });
 
+            modelBuilder.Entity("GymTracker.Domain.Entities.Exercice", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<string>("ExerciseType")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Code")
+                        .IsUnique()
+                        .HasFilter("[DeletedAt] IS NULL");
+
+                    b.HasIndex("DeletedAt");
+
+                    b.ToTable("Exercices", (string)null);
+                });
+
+            modelBuilder.Entity("GymTracker.Domain.Entities.ExerciceMuscle", b =>
+                {
+                    b.Property<Guid>("ExerciceId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("MuscleId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Type")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("ExerciceId", "MuscleId", "Type");
+
+                    b.HasIndex("DeletedAt");
+
+                    b.HasIndex("MuscleId");
+
+                    b.ToTable("ExerciceMuscles", (string)null);
+                });
+
+            modelBuilder.Entity("GymTracker.Domain.Entities.ExerciceUnit", b =>
+                {
+                    b.Property<Guid>("ExerciceId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("UnitId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("ExerciceId", "UnitId");
+
+                    b.HasIndex("DeletedAt");
+
+                    b.HasIndex("UnitId");
+
+                    b.ToTable("ExerciceUnits", (string)null);
+                });
+
+            modelBuilder.Entity("GymTracker.Domain.Entities.HistoricalExerciseRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("DayNumber")
+                        .HasColumnType("int");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Payload")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("nvarchar(4000)");
+
+                    b.Property<DateTimeOffset>("RecordedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid>("SourcePlannedExerciseId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("SourceReason")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("WeekNumber")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DeletedAt");
+
+                    b.ToTable("HistoricalExerciseRecords", (string)null);
+                });
+
+            modelBuilder.Entity("GymTracker.Domain.Entities.MonthlyPlan", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("ActiveDays")
+                        .HasColumnType("int");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("MigrationVersion")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DeletedAt");
+
+                    b.HasIndex("UserId")
+                        .IsUnique()
+                        .HasFilter("[DeletedAt] IS NULL");
+
+                    b.ToTable("MonthlyPlans", (string)null);
+                });
+
             modelBuilder.Entity("GymTracker.Domain.Entities.Muscle", b =>
                 {
                     b.Property<Guid>("Id")
@@ -100,11 +336,108 @@ namespace GymTracker.Infrastructure.Migrations
                     b.ToTable("Muscles", (string)null);
                 });
 
-            modelBuilder.Entity("GymTracker.Domain.Entities.TrainingLog", b =>
+            modelBuilder.Entity("GymTracker.Domain.Entities.PlanDay", b =>
+                {
+                    b.Property<Guid>("MonthlyPlanId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("WeekNumber")
+                        .HasColumnType("int");
+
+                    b.Property<int>("DayNumber")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<DateTimeOffset?>("TruncatedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.HasKey("MonthlyPlanId", "WeekNumber", "DayNumber");
+
+                    b.ToTable("PlanDays", (string)null);
+                });
+
+            modelBuilder.Entity("GymTracker.Domain.Entities.PlanWeek", b =>
+                {
+                    b.Property<Guid>("MonthlyPlanId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("WeekNumber")
+                        .HasColumnType("int");
+
+                    b.HasKey("MonthlyPlanId", "WeekNumber");
+
+                    b.ToTable("PlanWeeks", (string)null);
+                });
+
+            modelBuilder.Entity("GymTracker.Domain.Entities.PlannedExercise", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("DayNumber")
+                        .HasColumnType("int");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("ExerciseId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("MonthlyPlanId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("OrderIndex")
+                        .HasColumnType("int");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("WeekNumber")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DeletedAt");
+
+                    b.HasIndex("ExerciseId");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("MonthlyPlanId", "WeekNumber", "DayNumber", "OrderIndex");
+
+                    b.ToTable("PlannedExercises", (string)null);
+                });
+
+            modelBuilder.Entity("GymTracker.Domain.Entities.SessionBlock", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("BlockType")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
 
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("datetimeoffset");
@@ -118,25 +451,82 @@ namespace GymTracker.Infrastructure.Migrations
                     b.Property<Guid?>("DeletedBy")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<Guid>("ExerciseId")
+                    b.Property<string>("Description")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("DurationUnitCode")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<decimal>("DurationValue")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int?>("IntensityRpe")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<int>("OrderIndex")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("TrainingSessionId")
                         .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DeletedAt");
+
+                    b.HasIndex("TrainingSessionId");
+
+                    b.ToTable("SessionBlocks", (string)null);
+                });
+
+            modelBuilder.Entity("GymTracker.Domain.Entities.TrainingLog", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("DayNumber")
+                        .HasColumnType("int");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ExerciseCode")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
 
                     b.Property<Guid>("GroupId")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<Guid>("MetricId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("RoutineId")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(450)");
-
-                    b.Property<string>("SessionId")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(450)");
-
                     b.Property<DateTimeOffset>("Timestamp")
                         .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("UnitCode")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
 
                     b.Property<DateTimeOffset?>("UpdatedAt")
                         .HasColumnType("datetimeoffset");
@@ -151,25 +541,99 @@ namespace GymTracker.Infrastructure.Migrations
                         .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
 
+                    b.Property<int>("WeekNumber")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DayNumber");
+
+                    b.HasIndex("DeletedAt");
+
+                    b.HasIndex("ExerciseCode");
+
+                    b.HasIndex("GroupId");
+
+                    b.HasIndex("UnitCode");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("WeekNumber");
+
+                    b.HasIndex("WeekNumber", "DayNumber", "ExerciseCode");
+
+                    b.ToTable("TrainingLogs", (string)null);
+                });
+
+            modelBuilder.Entity("GymTracker.Domain.Entities.TrainingSession", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("DayNumber")
+                        .HasColumnType("int");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("DurationMinutes")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<Guid>("ExerciseId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<string>("SecondaryMetricUnitCode")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<decimal>("SecondaryMetricValue")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("TertiaryMetricValue")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateTimeOffset>("Timestamp")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("WeekNumber")
+                        .HasColumnType("int");
+
                     b.HasKey("Id");
 
                     b.HasIndex("DeletedAt");
 
                     b.HasIndex("ExerciseId");
 
-                    b.HasIndex("GroupId");
+                    b.HasIndex("UserId", "WeekNumber", "DayNumber", "ExerciseId");
 
-                    b.HasIndex("MetricId");
-
-                    b.HasIndex("RoutineId");
-
-                    b.HasIndex("SessionId");
-
-                    b.HasIndex("UserId");
-
-                    b.HasIndex("SessionId", "ExerciseId");
-
-                    b.ToTable("TrainingLogs", (string)null);
+                    b.ToTable("TrainingSessions", (string)null);
                 });
 
             modelBuilder.Entity("GymTracker.Domain.Entities.Units", b =>
@@ -221,13 +685,123 @@ namespace GymTracker.Infrastructure.Migrations
                     b.ToTable("Units", (string)null);
                 });
 
-            modelBuilder.Entity("GymTracker.Domain.Entities.TrainingLog", b =>
+            modelBuilder.Entity("GymTracker.Domain.Entities.ExerciceMuscle", b =>
                 {
-                    b.HasOne("GymTracker.Domain.Entities.Units", null)
+                    b.HasOne("GymTracker.Domain.Entities.Exercice", "Exercice")
+                        .WithMany("Muscles")
+                        .HasForeignKey("ExerciceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("GymTracker.Domain.Entities.Muscle", "Muscle")
                         .WithMany()
-                        .HasForeignKey("MetricId")
+                        .HasForeignKey("MuscleId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.Navigation("Exercice");
+
+                    b.Navigation("Muscle");
+                });
+
+            modelBuilder.Entity("GymTracker.Domain.Entities.ExerciceUnit", b =>
+                {
+                    b.HasOne("GymTracker.Domain.Entities.Exercice", "Exercice")
+                        .WithMany("Units")
+                        .HasForeignKey("ExerciceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("GymTracker.Domain.Entities.Units", "Unit")
+                        .WithMany()
+                        .HasForeignKey("UnitId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Exercice");
+
+                    b.Navigation("Unit");
+                });
+
+            modelBuilder.Entity("GymTracker.Domain.Entities.PlanDay", b =>
+                {
+                    b.HasOne("GymTracker.Domain.Entities.PlanWeek", null)
+                        .WithMany("Days")
+                        .HasForeignKey("MonthlyPlanId", "WeekNumber")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("GymTracker.Domain.Entities.PlanWeek", b =>
+                {
+                    b.HasOne("GymTracker.Domain.Entities.MonthlyPlan", null)
+                        .WithMany("Weeks")
+                        .HasForeignKey("MonthlyPlanId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("GymTracker.Domain.Entities.PlannedExercise", b =>
+                {
+                    b.HasOne("GymTracker.Domain.Entities.Exercice", null)
+                        .WithMany()
+                        .HasForeignKey("ExerciseId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("GymTracker.Domain.Entities.MonthlyPlan", null)
+                        .WithMany("PlannedExercises")
+                        .HasForeignKey("MonthlyPlanId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("GymTracker.Domain.Entities.PlanDay", null)
+                        .WithMany()
+                        .HasForeignKey("MonthlyPlanId", "WeekNumber", "DayNumber")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("GymTracker.Domain.Entities.SessionBlock", b =>
+                {
+                    b.HasOne("GymTracker.Domain.Entities.TrainingSession", null)
+                        .WithMany("Blocks")
+                        .HasForeignKey("TrainingSessionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("GymTracker.Domain.Entities.TrainingSession", b =>
+                {
+                    b.HasOne("GymTracker.Domain.Entities.Exercice", null)
+                        .WithMany()
+                        .HasForeignKey("ExerciseId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("GymTracker.Domain.Entities.Exercice", b =>
+                {
+                    b.Navigation("Muscles");
+
+                    b.Navigation("Units");
+                });
+
+            modelBuilder.Entity("GymTracker.Domain.Entities.MonthlyPlan", b =>
+                {
+                    b.Navigation("PlannedExercises");
+
+                    b.Navigation("Weeks");
+                });
+
+            modelBuilder.Entity("GymTracker.Domain.Entities.PlanWeek", b =>
+                {
+                    b.Navigation("Days");
+                });
+
+            modelBuilder.Entity("GymTracker.Domain.Entities.TrainingSession", b =>
+                {
+                    b.Navigation("Blocks");
                 });
 #pragma warning restore 612, 618
         }

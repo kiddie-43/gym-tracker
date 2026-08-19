@@ -1,4 +1,4 @@
-﻿import { IMuscle } from "../muscles/IMuscles";
+﻿import { IMuscle } from "../IMuscles/IMuscles";
 import { ITableFilters } from "../skeleton/IPaginated/IPaginated";
 import { IUnit } from "../units/IUnit";
 
@@ -8,6 +8,7 @@ export interface IExercise {
     code: string;
     name: string;
     description: string;
+    exerciseType: string;
     primaryMuscles: IMuscle[];
     secondaryMuscles: IMuscle[];
     units: IUnit[];
@@ -17,6 +18,7 @@ export interface IExerciseToSave  {
     code: string;
     name: string;
     description: string;
+    exerciseType: string;
     primaryMuscles: string[];
     secondaryMuscles: string[];
     units: string[];

@@ -9,5 +9,6 @@ export interface IReduxState<T, U> {
     error: string | null;
     loading: boolean;
     popUpCode: PopUpCode;
+    restTimerSeconds?: number;
     csvResult?: unknown;
 }

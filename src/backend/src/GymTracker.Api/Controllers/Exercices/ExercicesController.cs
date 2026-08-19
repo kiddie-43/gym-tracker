@@ -27,6 +27,12 @@ public sealed class ExercicesController : ControllerBase
         return Ok(rows);
     }
 
+    [HttpGet("types")]
+    public ActionResult<IReadOnlyCollection<ExerciceTypeResponse>> ListTypes()
+    {
+        return Ok(_service.ListExerciseTypes());
+    }
+
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<ExerciceResponse>> GetById(Guid id, CancellationToken cancellationToken = default)
     {

@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 namespace GymTracker.Api.Extensions;
 
@@ -7,7 +8,8 @@ public static class HealthCheckExtensions
 {
     public static IServiceCollection AddHealthChecksConfiguration(this IServiceCollection services)
     {
-        services.AddHealthChecks();
+        services.AddHealthChecks()
+            .AddCheck("monthly-plan-module", () => HealthCheckResult.Healthy("Monthly plan module registered."));
         return services;
     }
 

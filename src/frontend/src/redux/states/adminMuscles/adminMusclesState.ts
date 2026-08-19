@@ -1,5 +1,5 @@
 import { PopUpCode } from '../../../enums/popUp/popUp';
-import type {  IMuscle, IMusclesFilter } from '../../../interfaces/muscles/IMuscles';
+import type {  IMuscle, IMusclesFilter } from '../../../interfaces/IMuscles/IMuscles';
 import { IReduxState } from '../../../interfaces/skeleton/IRedux/IReduxState';
 import type { RootState } from '../../store';
 

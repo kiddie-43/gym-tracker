@@ -11,7 +11,7 @@ import { useTranslation } from 'react-i18next';
 
 import type { IUnit } from '../../../../interfaces/units/IUnit';
 import type { IExercisesFilter } from '../../../../interfaces/IExercises/IExercises';
-import type { IMuscle } from '../../../../interfaces/muscles/IMuscles';
+import type { IMuscle } from '../../../../interfaces/IMuscles/IMuscles';
 import { updateExerciseFilterAction } from '../../../../redux/actions/exercises/exercisesActions';
 import { useAppDispatch, useAppSelector } from '../../../../redux/hooks';
 import {listUnitsPage } from '../../../../services/api/units/unitsApi';

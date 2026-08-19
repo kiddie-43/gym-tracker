@@ -2,6 +2,7 @@ namespace GymTracker.Domain.Entities;
 
 using System.Collections.ObjectModel;
 using GymTracker.Domain.Common;
+using GymTracker.Domain.Enum;
 
 public sealed class Exercice : AuditableEntity
 {
@@ -11,6 +12,8 @@ public sealed class Exercice : AuditableEntity
 
     public string? Description { get; private set; }
 
+    public ExerciseType ExerciseType { get; private set; }
+
     public Collection<ExerciceUnit> Units { get; private set; } = new();
 
     public Collection<ExerciceMuscle> Muscles { get; private set; } = new();
@@ -19,20 +22,22 @@ public sealed class Exercice : AuditableEntity
     {
     }
 
-    public static Exercice Create(string name, string code, string? description)
+    public static Exercice Create(string name, string code, string? description, string exerciseType)
     {
         return new Exercice
         {
             Name = ValidateName(name),
             Code = NormalizeCode(code),
             Description = NormalizeDescription(description),
+            ExerciseType = NormalizeExerciseType(exerciseType),
         };
     }
 
-    public void Update(string name, string? description)
+    public void Update(string name, string? description, string exerciseType)
     {
         Name = ValidateName(name);
         Description = NormalizeDescription(description);
+        ExerciseType = NormalizeExerciseType(exerciseType);
     }
 
     public void AddUnit(Units unit)
@@ -102,5 +107,21 @@ public sealed class Exercice : AuditableEntity
     private static string? NormalizeDescription(string? value)
     {
         return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+    }
+
+    private static ExerciseType NormalizeExerciseType(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            throw new ArgumentException("ExerciseType is required.", nameof(value));
+        }
+
+        if (!System.Enum.TryParse<ExerciseType>(value.Trim(), true, out var parsedType)
+            || !System.Enum.IsDefined(parsedType))
+        {
+            throw new ArgumentException("ExerciseType is invalid.", nameof(value));
+        }
+
+        return parsedType;
     }
 }

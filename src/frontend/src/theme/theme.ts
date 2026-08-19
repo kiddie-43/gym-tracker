@@ -62,6 +62,17 @@ export function getAppTheme(mode: PaletteMode) {
       divider: isLight ? '#F1DDD0' : '#3A2E27',
     },
 
+    exerciseCategories: {
+      STRENGTH: '#84CC16',
+      BODYWEIGHT: '#3B82F6',
+      CARDIO: '#F97316',
+      MOBILITY: '#14B8A6',
+      STRETCHING: '#A855F7',
+      PLYOMETRIC: '#FACC15',
+      SPORTS: '#EF4444',
+      REHABILITATION: '#06B6D4',
+    },
+
     typography: {
       fontFamily: '"Segoe UI", sans-serif',
     },
@@ -75,12 +86,10 @@ export function getAppTheme(mode: PaletteMode) {
         styleOverrides: {
           html: {
             height: '100%',
-            overflow: 'hidden',
           },
 
           body: {
             height: '100%',
-            overflow: 'hidden',
             backgroundColor: isLight ? '#FFF8F1' : '#1A1410',
 
             '& *::-webkit-scrollbar': {
@@ -127,7 +136,6 @@ export function getAppTheme(mode: PaletteMode) {
 
           '#root': {
             height: '100%',
-            overflow: 'hidden',
           },
         },
       },
@@ -161,4 +169,14 @@ export function getAppTheme(mode: PaletteMode) {
       },
     },
   });
+}
+
+declare module '@mui/material/styles' {
+  interface Theme {
+    exerciseCategories: Record<string, string>;
+  }
+
+  interface ThemeOptions {
+    exerciseCategories?: Record<string, string>;
+  }
 }
